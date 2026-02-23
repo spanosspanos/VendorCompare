@@ -98,7 +98,7 @@ export default function PARRow({ product, parValue, inventoryActual, onActualCha
         <button
           onClick={openNote}
           className={`text-base leading-none ml-1 flex-shrink-0 transition-opacity ${
-            flagged ? 'opacity-100' : 'opacity-30 hover:opacity-60'
+            flagged ? 'opacity-100 bg-amber-200 rounded px-0.5' : 'opacity-40 hover:opacity-60'
           }`}
           aria-label={flagged ? 'Edit flag note' : 'Add flag note'}
           title={flagged ? (noteText || 'Flagged') : 'Flag this item'}

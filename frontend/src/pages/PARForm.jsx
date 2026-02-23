@@ -119,6 +119,7 @@ export default function PARForm() {
   }, [productData])
 
   const pendingCount = Object.keys(pendingOrder).length
+  const savedTacoCount = Object.keys(notes).length
 
   const handleAssemble = async () => {
     if (assembling) return
@@ -150,16 +151,26 @@ export default function PARForm() {
         })
       })
 
-      if (assembleItems.length === 0) {
+      if (assembleItems.length === 0 && savedTacoCount === 0) {
         setAssembleError('Nothing to order — all items are at or above PAR.')
         setAssembling(false)
         return
       }
 
-      const requires_review = hasFlags || Object.keys(notes).length > 0
+      const requires_review = hasFlags || savedTacoCount > 0
 
-      // Step 1: Assemble
-      const assembleData = await assembleOrder(1, assembleItems)
+      // Step 1: Assemble (skip if no orderable items — taco-only order)
+      let assembleData
+      if (assembleItems.length > 0) {
+        assembleData = await assembleOrder(1, assembleItems)
+      } else {
+        assembleData = {
+          vendor_orders: [],
+          total_cost: 0,
+          unpriced_items: [],
+          comparison: { savings_vs_worst: 0, vendors: [] },
+        }
+      }
 
       // Step 2: Build save payload with flag + note metadata
       const saveItems = assembleData.vendor_orders.flatMap((vo) =>
@@ -177,6 +188,26 @@ export default function PARForm() {
         })
       )
 
+      // Explicitly serialize NO PAR + taco items (flagged but unorderable — no PAR set)
+      // Governing principle: every item type must be explicitly included or it silently drops
+      categories.forEach((cat) => {
+        cat.products.forEach((product) => {
+          const { flag } = productData[product.id]
+          if (flag === 'no_par' && notes[product.id] !== undefined) {
+            saveItems.push({
+              product_id: product.id,
+              quantity: null,
+              selected_vendor_id: null,
+              unit_price: null,
+              line_total: null,
+              item_note: notes[product.id] || null,
+              flag: 'no_par',
+              taco: true,
+            })
+          }
+        })
+      })
+
       const savePayload = {
         location_id: 1,
         total_cost: assembleData.total_cost,
@@ -188,7 +219,7 @@ export default function PARForm() {
         })),
         notes_to_john: orderNote || null,
         requires_review,
-        taco_flag_count: Object.keys(notes).length,
+        taco_flag_count: savedTacoCount,
       }
 
       // Step 3: Save
@@ -202,7 +233,7 @@ export default function PARForm() {
           savedOrderId: savedOrderRes.data.id,
           requiresReview: requires_review,
           notesToJohn: orderNote || null,
-          tacoFlagCount: Object.keys(notes).length,
+          tacoFlagCount: savedTacoCount,
         },
       })
     } catch (err) {
@@ -314,11 +345,11 @@ export default function PARForm() {
       <footer className="fixed bottom-0 left-0 right-0 h-[70px] bg-white border-t border-gray-200 flex items-center justify-center px-4 z-50">
         <button
           onClick={handleAssemble}
-          disabled={assembling || pendingCount === 0 || openTacoCount > 0}
+          disabled={assembling || (pendingCount === 0 && savedTacoCount === 0) || openTacoCount > 0}
           className={`w-full max-w-md py-3 rounded-xl font-semibold text-sm transition-colors ${
             assembling
               ? 'bg-emerald-400 text-white cursor-not-allowed'
-              : pendingCount === 0 || openTacoCount > 0
+              : (pendingCount === 0 && savedTacoCount === 0) || openTacoCount > 0
               ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
               : 'bg-emerald-600 text-white active:bg-emerald-700'
           }`}
