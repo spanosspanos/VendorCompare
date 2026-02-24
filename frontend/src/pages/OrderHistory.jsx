@@ -9,7 +9,7 @@ const PERIODS = [
   { value: 'year', label: 'This Year' },
 ]
 
-export default function OrderHistory() {
+export default function OrderHistory({ embedded = false }) {
   const navigate = useNavigate()
   const [period, setPeriod] = useState('all')
   const [orders, setOrders] = useState([])
@@ -45,6 +45,128 @@ export default function OrderHistory() {
     } finally {
       setCsvLoading(false)
     }
+  }
+
+  // When embedded in John's Glasses, render content only (no header, no outer layout)
+  if (embedded) {
+    return (
+      <div className="pb-6">
+        {/* Period filter */}
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+          {PERIODS.map((p) => (
+            <button
+              key={p.value}
+              onClick={() => setPeriod(p.value)}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                period === p.value
+                  ? 'bg-emerald-600 text-white'
+                  : 'bg-white text-gray-600 border border-gray-300 active:bg-gray-50'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {summary && (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-4">
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Total Spent</p>
+                <p className="text-lg font-bold text-emerald-800">${summary.total_spent.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Total Saved</p>
+                <p className="text-lg font-bold text-emerald-800">${summary.total_saved.toFixed(2)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-emerald-600 font-medium uppercase tracking-wide">Orders</p>
+                <p className="text-lg font-bold text-emerald-800">{summary.order_count}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {loading && (
+          <div className="flex items-center justify-center py-16">
+            <div className="flex flex-col items-center gap-3">
+              <div className="w-8 h-8 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+              <span className="text-gray-500 text-sm">Loading orders…</span>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-center">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && orders.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+            <p className="text-gray-500 text-sm">No orders saved yet.</p>
+          </div>
+        )}
+
+        {!loading && !error && orders.length > 0 && (
+          <div className="space-y-2">
+            {orders.map((order) => (
+              <button
+                key={order.id}
+                onClick={() => navigate(`/history/${order.id}`)}
+                className="w-full bg-white rounded-2xl shadow-sm p-4 text-left hover:shadow-md active:bg-gray-50 transition-all"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="text-xs text-gray-400">
+                      {new Date(order.created_at).toLocaleDateString('en-US', {
+                        month: 'short', day: 'numeric', year: 'numeric',
+                      })}
+                    </p>
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                      <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                        {order.status}
+                      </span>
+                      {order.review_status === 'approved' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                          Approved
+                        </span>
+                      )}
+                      {order.review_status === 'rejected' && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600">
+                          Rejected
+                        </span>
+                      )}
+                      {order.review_status === 'pending' && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                          Pending Review
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-base font-bold text-gray-800">${order.total_cost.toFixed(2)}</p>
+                    {order.savings_vs_worst > 0 && (
+                      <p className="text-xs text-emerald-600">saved ${order.savings_vs_worst.toFixed(2)}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex gap-4 text-xs text-gray-400">
+                  <span>{order.item_count} {order.item_count === 1 ? 'item' : 'items'}</span>
+                  <span>{order.vendor_count} {order.vendor_count === 1 ? 'vendor' : 'vendors'}</span>
+                </div>
+                {order.review_note && (order.review_status === 'approved' || order.review_status === 'rejected') && (
+                  <p className="text-xs text-gray-400 mt-1.5 italic">
+                    <span className="font-medium not-italic text-gray-500">John's note:</span> {order.review_note}
+                  </p>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (

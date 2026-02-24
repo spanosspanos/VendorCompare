@@ -18,6 +18,9 @@ export default function OrderDetailJohns({ order, onBack, onAction }) {
     }
   })
 
+  // Items requiring John's attention: flagged or carrying a taco note
+  const flaggedItems = order.items.filter((i) => i.flag || i.item_note)
+
   const formattedDate = new Date(order.created_at).toLocaleDateString('en-US', {
     weekday: 'short', month: 'short', day: 'numeric',
   })
@@ -110,6 +113,40 @@ export default function OrderDetailJohns({ order, onBack, onAction }) {
               <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">Note from Kitchen</span>
             </div>
             <p className="text-sm text-amber-800">{order.notes_to_john}</p>
+          </div>
+        )}
+
+        {/* Flagged Items — alert section, above vendor breakdown */}
+        {flaggedItems.length > 0 && (
+          <div className="bg-amber-50 border-l-4 border-amber-400 border border-amber-200 rounded-2xl p-3 mb-3">
+            <div className="flex items-center gap-1.5 mb-2">
+              <span>🌮</span>
+              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wide">
+                Flagged Items
+              </span>
+            </div>
+            <div className="space-y-2">
+              {flaggedItems.map((item) => (
+                <div key={item.product_id}>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <p className="text-sm font-medium text-amber-800">{item.product_name}</p>
+                    {item.flag === 'no_par' && (
+                      <span className="bg-amber-100 text-amber-700 text-xs font-semibold px-1.5 py-0.5 rounded flex-shrink-0">
+                        NO PAR
+                      </span>
+                    )}
+                    {item.flag === 'overstock' && (
+                      <span className="bg-orange-100 text-orange-700 text-xs font-semibold px-1.5 py-0.5 rounded flex-shrink-0">
+                        OVERSTOCK
+                      </span>
+                    )}
+                  </div>
+                  {item.item_note && (
+                    <p className="text-xs text-amber-700 mt-0.5 italic">"{item.item_note}"</p>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
 

@@ -219,6 +219,15 @@ export default function OrderAssembly() {
           )}
         </div>
 
+        {/* Taco-only order: no vendor orders, items forwarded to John */}
+        {parState && vendor_orders.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 mb-3">
+            <p className="text-amber-800 text-sm font-medium text-center">
+              No vendor orders — flagged items forwarded to John.
+            </p>
+          </div>
+        )}
+
         {/* Vendor cards */}
         {vendor_orders.map((vo) => (
           <div key={vo.vendor_id} className="bg-white mb-2 rounded-2xl shadow-sm overflow-hidden">
