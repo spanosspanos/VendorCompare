@@ -111,11 +111,13 @@ class AssembleOrderOut(BaseModel):
 # --- Phase 3: Save Order schemas ---
 
 class SaveOrderItemIn(BaseModel):
+    # quantity/selected_vendor_id/unit_price/line_total are Optional to support
+    # taco-flagged NoPar items that have no PAR, no vendor, no price (Fix A, Case 2).
     product_id: int
-    quantity: int
-    selected_vendor_id: int
-    unit_price: float
-    line_total: float
+    quantity: Optional[int] = None
+    selected_vendor_id: Optional[int] = None
+    unit_price: Optional[float] = None
+    line_total: Optional[float] = None
     item_note: Optional[str] = None
     flag: Optional[str] = None
 
@@ -155,8 +157,8 @@ class OrderDetailLineItem(BaseModel):
     product_id: int
     product_name: str
     quantity: int
-    selected_vendor_id: int
-    vendor_name: str
+    selected_vendor_id: Optional[int] = None
+    vendor_name: Optional[str] = None
     unit_price: float
     line_total: float
     item_note: Optional[str] = None

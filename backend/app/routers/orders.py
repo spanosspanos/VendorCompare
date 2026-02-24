@@ -175,13 +175,16 @@ def save_order(payload: SaveOrderIn, db: Session = Depends(get_db)):
     db.flush()  # get order.id before committing
 
     for item in payload.items:
+        # quantity/unit_price/line_total may be None for taco-flagged NoPar items
+        # (no PAR set, no vendor assignment, no price). Default to 0/0.0 so the
+        # DB non-null constraint is satisfied while preserving the flag/note data.
         oi = OrderItem(
             order_id=order.id,
             product_id=item.product_id,
-            quantity=item.quantity,
+            quantity=item.quantity if item.quantity is not None else 0,
             selected_vendor_id=item.selected_vendor_id,
-            unit_price=item.unit_price,
-            line_total=item.line_total,
+            unit_price=item.unit_price if item.unit_price is not None else 0.0,
+            line_total=item.line_total if item.line_total is not None else 0.0,
             item_note=item.item_note,
             flag=item.flag,
         )
@@ -304,7 +307,7 @@ def get_pending_review_orders(db: Session = Depends(get_db)):
                 product_name=product.name if product else f"Product #{oi.product_id}",
                 quantity=oi.quantity,
                 selected_vendor_id=oi.selected_vendor_id,
-                vendor_name=vendor.name if vendor else f"Vendor #{oi.selected_vendor_id}",
+                vendor_name=vendor.name if vendor else None,
                 unit_price=oi.unit_price,
                 line_total=oi.line_total,
                 item_note=oi.item_note,
@@ -375,7 +378,7 @@ def get_order_detail(order_id: int, db: Session = Depends(get_db)):
             product_name=product.name if product else f"Product #{oi.product_id}",
             quantity=oi.quantity,
             selected_vendor_id=oi.selected_vendor_id,
-            vendor_name=vendor.name if vendor else f"Vendor #{oi.selected_vendor_id}",
+            vendor_name=vendor.name if vendor else None,
             unit_price=oi.unit_price,
             line_total=oi.line_total,
             item_note=oi.item_note,
