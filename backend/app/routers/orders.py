@@ -279,6 +279,7 @@ def list_orders(period: str = "all", db: Session = Depends(get_db)):
             status=o.status,
             requires_review=o.requires_review,
             review_status=o.review_status,
+            review_note=o.review_note,
         ))
     return result
 
@@ -328,6 +329,7 @@ def get_pending_review_orders(db: Session = Depends(get_db)):
             notes_to_john=order.notes_to_john,
             requires_review=order.requires_review,
             review_status=order.review_status,
+            review_note=order.review_note,
             taco_flag_count=order.taco_flag_count,
         ))
     return result
@@ -340,6 +342,8 @@ def review_order(order_id: int, payload: OrderReviewIn, db: Session = Depends(ge
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     order.review_status = payload.review_status
+    if payload.review_note is not None:
+        order.review_note = payload.review_note
     db.commit()
     db.refresh(order)
     return OrderListItem(
@@ -398,5 +402,6 @@ def get_order_detail(order_id: int, db: Session = Depends(get_db)):
         notes_to_john=order.notes_to_john,
         requires_review=order.requires_review,
         review_status=order.review_status,
+        review_note=order.review_note,
         taco_flag_count=order.taco_flag_count,
     )

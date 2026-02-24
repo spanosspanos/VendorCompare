@@ -146,6 +146,7 @@ class OrderListItem(BaseModel):
     status: str
     requires_review: bool = False
     review_status: str = 'not_required'
+    review_note: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -179,6 +180,7 @@ class OrderDetailOut(BaseModel):
     notes_to_john: Optional[str] = None
     requires_review: bool = False
     review_status: str = 'not_required'
+    review_note: Optional[str] = None
     taco_flag_count: int = 0
 
 
@@ -202,4 +204,5 @@ class ParSettingIn(BaseModel):
 
 
 class OrderReviewIn(BaseModel):
-    review_status: str  # 'approved'
+    review_status: str
+    review_note: Optional[str] = None

@@ -40,5 +40,6 @@ export const upsertParSetting = (productId, parValue) =>
   api.put(`/par-settings/${productId}`, { par_value: parValue })
 export const getPendingReviewOrders = () => api.get('/orders/pending-review')
 export const approveOrder = (id) => api.post(`/orders/${id}/review`, { review_status: 'approved' })
+export const reviewOrder = (id, payload) => api.post(`/orders/${id}/review`, payload)
 
 export default api

@@ -76,6 +76,7 @@ class Order(Base):
     notes_to_john = Column(Text, nullable=True)
     requires_review = Column(Boolean, nullable=False, default=False)
     review_status = Column(String, nullable=False, default='not_required')
+    review_note = Column(Text, nullable=True)
     taco_flag_count = Column(Integer, nullable=False, default=0)
 
     location = relationship("Location", back_populates="orders")

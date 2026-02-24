@@ -1,7 +1,36 @@
+import { useState } from 'react'
 import PARManager from '../components/PARManager'
 import OrderReviewQueue from '../components/OrderReviewQueue'
+import OrderDetailJohns from '../components/OrderDetailJohns'
 
 export default function JohnsGlasses() {
+  const [selectedOrder, setSelectedOrder] = useState(null)
+  const [actionedIds, setActionedIds] = useState([])
+
+  const handleSelectOrder = (order) => {
+    setSelectedOrder(order)
+  }
+
+  const handleBackToQueue = () => {
+    setSelectedOrder(null)
+  }
+
+  const handleAction = (orderId) => {
+    // Optimistic: remove from queue immediately, return to queue
+    setActionedIds((prev) => [...prev, orderId])
+    setSelectedOrder(null)
+  }
+
+  if (selectedOrder) {
+    return (
+      <OrderDetailJohns
+        order={selectedOrder}
+        onBack={handleBackToQueue}
+        onAction={handleAction}
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Header */}
@@ -22,7 +51,10 @@ export default function JohnsGlasses() {
       <main className="flex-1 pt-[76px] pb-8 px-3 space-y-4">
         {/* Order Review Queue — shown first so John sees what needs action */}
         <section>
-          <OrderReviewQueue />
+          <OrderReviewQueue
+            onSelectOrder={handleSelectOrder}
+            excludeIds={actionedIds}
+          />
         </section>
 
         {/* PAR Manager */}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { getPendingReviewOrders, approveOrder } from '../api'
 
-export default function OrderReviewQueue() {
+export default function OrderReviewQueue({ onSelectOrder, excludeIds = [] }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -56,7 +56,7 @@ export default function OrderReviewQueue() {
     )
   }
 
-  const pendingOrders = orders.filter((o) => o.review_status !== 'approved')
+  const pendingOrders = orders.filter((o) => o.review_status !== 'approved' && !excludeIds.includes(o.id))
   const approvedOrders = orders.filter((o) => o.review_status === 'approved')
 
   return (
@@ -96,7 +96,7 @@ export default function OrderReviewQueue() {
           <div key={order.id} className="border-b border-gray-100 last:border-0">
             {/* Order summary row */}
             <button
-              onClick={() => toggleExpand(order.id)}
+              onClick={() => onSelectOrder ? onSelectOrder(order) : toggleExpand(order.id)}
               className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors text-left"
             >
               <div className="flex-1 min-w-0">
