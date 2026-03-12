@@ -4,7 +4,7 @@ from sqlalchemy import func
 from typing import Optional
 
 from ..database import get_db
-from ..models import Category, Product
+from ..models import Category, Product, ParSetting
 from ..schemas import CategoryWithProductsOut, ProductOut, ProductPatchIn, ProductCreateIn
 
 router = APIRouter(prefix="/api/products", tags=["products"])
@@ -23,6 +23,10 @@ def get_products(
 
     categories = query.all()
 
+    # Build PAR value map for all products
+    par_settings = db.query(ParSetting).filter(ParSetting.location_id == 1).all()
+    par_map = {ps.product_id: ps.par_value for ps in par_settings}
+
     result = []
     for cat in categories:
         pq = (
@@ -33,12 +37,28 @@ def get_products(
         if not manage:
             pq = pq.filter(Product.muted == False, Product.is_deleted == False)
         products = pq.all()
+
+        # Enrich products with par_value
+        product_dicts = []
+        for p in products:
+            product_dicts.append(ProductOut(
+                id=p.id,
+                name=p.name,
+                category_id=p.category_id,
+                unit=p.unit,
+                sort_order=p.sort_order,
+                muted=p.muted,
+                is_deleted=p.is_deleted,
+                needs_pricing=p.needs_pricing,
+                par_value=par_map.get(p.id),
+            ))
+
         result.append(
             CategoryWithProductsOut(
                 id=cat.id,
                 name=cat.name,
                 sort_order=cat.sort_order,
-                products=products,
+                products=product_dicts,
             )
         )
     return result

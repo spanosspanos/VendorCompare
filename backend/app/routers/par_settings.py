@@ -73,6 +73,7 @@ def list_par_settings_with_prices(location_id: int = 1, db: Session = Depends(ge
         results.append(ParSettingWithPricesOut(
             product_id=product.id,
             product_name=product.name,
+            category_id=product.category_id,
             par_value=par.par_value if par else None,
             locked_vendor_id=par.locked_vendor_id if par else None,
             cheapest_price=cheapest["price"] if cheapest else None,

@@ -81,7 +81,10 @@ export default function PARManager() {
       if (!groups[cat]) groups[cat] = []
       groups[cat].push(p)
     })
-    return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
+    // Sort by category sort_order (from categories list), with Uncategorized last
+    const catOrder = {}
+    categories.forEach(c => { catOrder[c.name] = c.sort_order ?? 999 })
+    return Object.entries(groups).sort(([a], [b]) => (catOrder[a] ?? 999) - (catOrder[b] ?? 999))
   }, [filteredProducts, categories])
 
   const toggleCategory = (catName) => {

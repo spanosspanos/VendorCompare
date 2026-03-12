@@ -21,6 +21,7 @@ class ProductOut(BaseModel):
     muted: bool = False
     is_deleted: bool = False
     needs_pricing: bool = False
+    par_value: Optional[int] = None
 
     model_config = {"from_attributes": True}
 
@@ -228,6 +229,7 @@ class VendorPriceSummary(BaseModel):
 class ParSettingWithPricesOut(BaseModel):
     product_id: int
     product_name: str
+    category_id: Optional[int] = None
     par_value: Optional[int] = None
     locked_vendor_id: Optional[int] = None
     cheapest_price: Optional[float] = None
