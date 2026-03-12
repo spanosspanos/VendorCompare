@@ -1,9 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+/* ── Cantina Design Tokens ───────────────────────────────────────────────── */
+:root {
+  /* Backgrounds */
+  --color-bg-shell:    #0E1214;
+  --color-bg-surface:  #1A2025;
+  --color-bg-elevated: #222C33;
+
+  /* Accents */
+  --color-accent-primary:   #33FAD0;
+  --color-accent-secondary: #007F85;
+  --color-accent-gold:      #D4A017;
+
+  /* Text */
+  --color-text-primary:   #F0EDE8;
+  --color-text-secondary: #8A9099;
+  --color-text-inverse:   #0E1214;
+
+  /* Borders */
+  --color-border-subtle: #2A343C;
+
+  /* Status */
+  --color-status-success: #3DAA6E;
+  --color-status-warning: #E07B35;
+  --color-status-error:   #C23B3B;
+}
+
+/* ── Base resets ─────────────────────────────────────────────────────────── */
 html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--color-bg-shell);
+  color: var(--color-text-primary);
+}
+
+/* ── Typography scale classes ──────────────────────────────────────────── */
+.type-page-title   { font-family: 'Syne', sans-serif; font-size: 2rem;      font-weight: 800; color: var(--color-text-primary); }
+.type-section-head { font-family: 'Syne', sans-serif; font-size: 1.375rem;  font-weight: 700; color: var(--color-text-primary); }
+.type-card-head    { font-family: 'Syne', sans-serif; font-size: 1rem;      font-weight: 700; color: var(--color-text-primary); }
+.type-body         { font-family: 'Inter', sans-serif; font-size: 0.875rem;  font-weight: 400; color: var(--color-text-primary); }
+.type-data         { font-family: 'Inter', sans-serif; font-size: 0.8125rem; font-weight: 600; color: var(--color-text-primary); }
+.type-meta         { font-family: 'Inter', sans-serif; font-size: 0.75rem;   font-weight: 400; color: var(--color-text-secondary); }
+
+/* ── Motion tokens ─────────────────────────────────────────────────────── */
+.motion-btn {
+  transition: filter 120ms ease-out, transform 120ms ease-out;
+}
+.motion-btn:hover {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+}
+
+.motion-card {
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.motion-state {
+  transition: opacity 200ms ease-out, transform 200ms ease-out;
+}
+
+@keyframes modalOpenAnim {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes modalCloseAnim {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+.motion-modal-open  { animation: modalOpenAnim  180ms ease-out forwards; }
+.motion-modal-close { animation: modalCloseAnim 140ms ease-in  forwards; }
+
+/* ── Nav active slide-in ────────────────────────────────────────────────── */
+@keyframes navLineIn {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* ── KPI medallion (John's Glasses only) ───────────────────────────────── */
+.kpi-medallion {
+  border-radius: 50%;
+  background: var(--color-bg-elevated);
+  border: 2px solid var(--color-accent-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  height: 72px;
+}
+
+/* ── Gold ornamental divider ───────────────────────────────────────────── */
+.gold-divider {
+  border: none;
+  height: 1px;
+  background: var(--color-accent-gold);
+  opacity: 0.45;
+}
+
+/* ── Checkbox accent ───────────────────────────────────────────────────── */
+input[type="checkbox"] {
+  accent-color: var(--color-accent-primary);
+}
+
+/* ── Tour badge bounce ──────────────────────────────────────────────────── */
+@keyframes tourBadgePulse {
+  0%   { transform: scale(1) rotate(0deg); }
+  10%  { transform: scale(1.12) rotate(-4deg); }
+  20%  { transform: scale(1.09) rotate(3deg); }
+  32%  { transform: scale(1.14) rotate(-3deg); }
+  44%  { transform: scale(1.06) rotate(2deg); }
+  56%  { transform: scale(1.10) rotate(-1deg); }
+  68%  { transform: scale(1.04) rotate(1deg); }
+  80%  { transform: scale(1.02) rotate(0deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+.tour-badge-pulse {
+  animation: tourBadgePulse 2.6s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+  transform-origin: center;
+}
+
+/* ── Bus slide across screen ────────────────────────────────────────────── */
+@keyframes busSlide {
+  0%   { transform: translateX(-80px); opacity: 0; }
+  12%  { opacity: 1; }
+  88%  { opacity: 1; }
+  100% { transform: translateX(calc(100vw + 80px)); opacity: 0; }
+}
+.bus-slide {
+  animation: busSlide 650ms ease-in-out forwards;
 }

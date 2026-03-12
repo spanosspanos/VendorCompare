@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import engine, Base
-from .routers import categories, products, vendors, orders, prices, par_settings
+from .routers import categories, products, vendors, orders, prices, par_settings, prices_admin
 
 Base.metadata.create_all(bind=engine)
 
@@ -22,6 +22,7 @@ app.include_router(vendors.router)
 app.include_router(orders.router, prefix="/api/orders", tags=["orders"])
 app.include_router(prices.router, prefix="/api/prices", tags=["prices"])
 app.include_router(par_settings.router, prefix="/api/par-settings", tags=["par-settings"])
+app.include_router(prices_admin.router, prefix="/api/john", tags=["john"])
 
 
 @app.get("/api/health")

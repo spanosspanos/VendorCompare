@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional
+from datetime import datetime, timezone
 
 from ..database import get_db
 from ..models import Price, Product, Vendor
-from ..schemas import PriceOut
+from ..schemas import PriceOut, PriceUpdateIn
 
 router = APIRouter()
 
@@ -81,3 +82,41 @@ def get_product_prices(
         )
         for price, product_name, vendor_name in results
     ]
+
+
+@router.put("/product/{product_id}/vendor/{vendor_id}", response_model=PriceOut)
+def update_price(
+    product_id: int,
+    vendor_id: int,
+    payload: PriceUpdateIn,
+    db: Session = Depends(get_db),
+):
+    """Create a new Price record for product+vendor (keeps history). Returns PriceOut."""
+    product = db.query(Product).filter(Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    vendor = db.query(Vendor).filter(Vendor.id == vendor_id).first()
+    if not vendor:
+        raise HTTPException(status_code=404, detail="Vendor not found")
+
+    new_price = Price(
+        product_id=product_id,
+        vendor_id=vendor_id,
+        price=payload.price,
+        unit=payload.unit,
+        updated_at=datetime.now(timezone.utc),
+    )
+    db.add(new_price)
+    db.commit()
+    db.refresh(new_price)
+
+    return PriceOut(
+        id=new_price.id,
+        product_id=new_price.product_id,
+        product_name=product.name,
+        vendor_id=new_price.vendor_id,
+        vendor_name=vendor.name,
+        unit_price=new_price.price,
+        unit=new_price.unit,
+        effective_date=new_price.updated_at,
+    )

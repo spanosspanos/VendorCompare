@@ -21,6 +21,14 @@ export function OrderProvider({ children }) {
   }
 
   const updateQuantity = (productId, quantity) => {
+    if (quantity <= 0) {
+      setSelectedItems((prev) => {
+        const next = { ...prev }
+        delete next[productId]
+        return next
+      })
+      return
+    }
     setSelectedItems((prev) => {
       if (!prev[productId]) return prev
       return {
@@ -62,4 +70,16 @@ export function OrderProvider({ children }) {
   )
 }
 
-export const useOrder = () => useContext(OrderContext)
+export const useOrder = () => {
+  const ctx = useContext(OrderContext)
+  if (!ctx) return {
+    selectedItems: {},
+    toggleItem: () => {},
+    updateQuantity: () => {},
+    upsertItem: () => {},
+    removeItem: () => {},
+    clearAll: () => {},
+    getItemsArray: () => [],
+  }
+  return ctx
+}

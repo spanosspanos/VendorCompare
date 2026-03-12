@@ -46,6 +46,10 @@ class Product(Base):
     unit = Column(String, default="each")
     sort_order = Column(Integer, nullable=False, default=0)
 
+    muted = Column(Boolean, nullable=False, default=False)
+    is_deleted = Column(Boolean, nullable=False, default=False)
+    needs_pricing = Column(Boolean, nullable=False, default=False)
+
     category = relationship("Category", back_populates="products")
     prices = relationship("Price", back_populates="product")
 
@@ -78,6 +82,7 @@ class Order(Base):
     review_status = Column(String, nullable=False, default='not_required')
     review_note = Column(Text, nullable=True)
     taco_flag_count = Column(Integer, nullable=False, default=0)
+    comparison_json = Column(Text, nullable=True)
 
     location = relationship("Location", back_populates="orders")
     items = relationship("OrderItem", back_populates="order")
@@ -114,12 +119,29 @@ class OrderVendorSplit(Base):
     vendor = relationship("Vendor")
 
 
+class AuditLog(Base):
+    __tablename__ = "audit_log"
+
+    id = Column(Integer, primary_key=True, index=True)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    old_price = Column(Float, nullable=True)
+    new_price = Column(Float, nullable=False)
+    source = Column(String, default="upload")  # "scraper" | "upload"
+
+    vendor = relationship("Vendor")
+    product = relationship("Product")
+
+
 class ParSetting(Base):
     __tablename__ = "par_settings"
     id = Column(Integer, primary_key=True, index=True)
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     location_id = Column(Integer, ForeignKey("locations.id"), nullable=False)
     par_value = Column(Integer, nullable=False, default=0)
+    locked_vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     product = relationship("Product")
     location = relationship("Location")
+    locked_vendor = relationship("Vendor")

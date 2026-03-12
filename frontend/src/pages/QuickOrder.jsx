@@ -1,0 +1,187 @@
+import SombreroHome from '../components/SombreroHome'
+import { useState, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import CategorySection from '../components/CategorySection'
+import CartModal from '../components/CartModal'
+import { useOrder } from '../context/OrderContext'
+import { fetchProducts } from '../api'
+import { countAssembledOrders } from '../utils/assembledOrders'
+
+export default function QuickOrder() {
+  const [categories, setCategories] = useState([])
+  const [expandedCategories, setExpandedCategories] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const { selectedItems } = useOrder()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    fetchProducts()
+      .then((data) => {
+        setCategories(data)
+        if (data.length > 0) {
+          setExpandedCategories({ [data[0].id]: true })
+        }
+      })
+      .catch((err) => {
+        setError('Failed to load products. Please try again.')
+        console.error(err)
+      })
+      .finally(() => setLoading(false))
+  }, [])
+
+  const toggleExpand = (categoryId) => {
+    setExpandedCategories((prev) => ({
+      ...prev,
+      [categoryId]: !prev[categoryId],
+    }))
+  }
+
+  const totalSelected = Object.keys(selectedItems).length
+  const [cartOpen, setCartOpen] = useState(false)
+  const [assembledCount, setAssembledCount] = useState(countAssembledOrders())
+  const [orderNote, setOrderNote] = useState('')
+
+  useEffect(() => {
+    setAssembledCount(countAssembledOrders())
+  }, [cartOpen])
+  const [search, setSearch] = useState('')
+
+  const filteredCategories = useMemo(() => {
+    if (!search.trim()) return categories
+    const term = search.toLowerCase()
+    return categories.map(cat => ({
+      ...cat,
+      products: cat.products.filter(p => p.name.toLowerCase().includes(term))
+    })).filter(cat => cat.products.length > 0)
+  }, [categories, search])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#0E1214]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-4 border-[#00C0C8] border-t-transparent rounded-full animate-spin" />
+          <span className="text-[#8A9099] text-sm">Loading products…</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-[#0E1214]">
+        <div className="text-center px-6">
+          <p className="text-red-500 mb-4 text-sm">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-[#00C0C8] text-[#0E1214] rounded-full text-sm font-bold"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col h-screen bg-[#0E1214]">
+      <header className="relative fixed top-0 left-0 right-0 h-[60px] bg-[#0E1214] text-white flex items-center px-4 z-50 shadow-md">
+        <button
+          onClick={() => navigate('/')}
+          className="p-2 -ml-1"
+          aria-label="Home"
+        ><SombreroHome /></button>
+        <h1 className="flex-1 text-center text-lg text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>Quick Order</h1>
+        {/* Cart clipboard */}
+        <button
+          onClick={() => setCartOpen(true)}
+          className="relative p-2 flex items-center"
+          aria-label="View cart"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          </svg>
+          {(totalSelected + assembledCount) > 0 && (
+            <span className="absolute top-0 right-0 bg-[#00C0C8] text-[#0E1214] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {totalSelected + assembledCount}
+            </span>
+          )}
+        </button>
+        <div className="absolute bottom-0 left-0 right-0 h-px bg-[#D4A017] opacity-45" />
+      </header>
+      <CartModal isOpen={cartOpen} onClose={() => setCartOpen(false)} />
+
+      <main data-tour="quick-order-main" className="flex-1 overflow-y-auto pt-[60px] pb-[70px] px-3 py-3">
+        {/* Search */}
+        <div className="px-0 pt-3 pb-2">
+          <div className="relative">
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search products..."
+              className="w-full text-sm border border-[#2A343C] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00C0C8] bg-[#0E1214] text-[#F0EDE8] placeholder:text-[#8A9099]"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8A9099] hover:text-[#F0EDE8] transition-colors"
+                aria-label="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+
+        {categories.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center px-6">
+            <p className="text-[#8A9099] text-sm">No products found.</p>
+          </div>
+        ) : (
+          filteredCategories.map((category) => (
+            <CategorySection
+              key={category.id}
+              category={category}
+              isExpanded={search.trim() ? true : !!expandedCategories[category.id]}
+              onToggleExpand={toggleExpand}
+            />
+          ))
+        )}
+
+        {/* Notes to John */}
+        <div className="px-3 py-4 border-t border-[#2A343C] mt-2">
+          <label className="block text-xs font-semibold text-[#8A9099] uppercase tracking-wide mb-2">
+            Notes to John
+          </label>
+          <textarea
+            value={orderNote}
+            onChange={(e) => setOrderNote(e.target.value)}
+            placeholder="Any notes for John about this order…"
+            rows={3}
+            className="w-full text-sm border border-[#2A343C] rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#00C0C8] resize-none bg-[#0E1214] text-[#F0EDE8] placeholder:text-[#8A9099]"
+          />
+        </div>
+      </main>
+
+      <footer className="fixed bottom-0 left-0 right-0 h-[70px] bg-[#1A2025] border-t border-[#2A343C] flex items-center justify-center px-4 z-50">
+        <button
+          className={`w-full max-w-md py-3 min-h-[44px] font-bold text-base transition-colors ${
+            totalSelected > 0
+              ? 'bg-[#00C0C8] text-[#0E1214] rounded-full active:opacity-90'
+              : 'bg-[#2A343C] text-[#8A9099] rounded-full cursor-not-allowed'
+          }`}
+          disabled={totalSelected === 0}
+          onClick={() => navigate('/order-assembly', { state: { notesToJohn: orderNote || null } })}
+        >
+          Assemble Orders
+          {totalSelected > 0 && (
+            <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-xs">
+              {totalSelected} {totalSelected === 1 ? 'item' : 'items'}
+            </span>
+          )}
+        </button>
+      </footer>
+    </div>
+  )
+}

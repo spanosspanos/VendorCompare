@@ -18,8 +18,23 @@ class ProductOut(BaseModel):
     category_id: int
     unit: str
     sort_order: int
+    muted: bool = False
+    is_deleted: bool = False
+    needs_pricing: bool = False
 
     model_config = {"from_attributes": True}
+
+
+class ProductPatchIn(BaseModel):
+    name: Optional[str] = None
+    muted: Optional[bool] = None
+    is_deleted: Optional[bool] = None
+
+
+class ProductCreateIn(BaseModel):
+    name: str
+    category_id: int
+    needs_pricing: bool = False
 
 
 class CategoryOut(BaseModel):
@@ -136,6 +151,7 @@ class SaveOrderIn(BaseModel):
     notes_to_john: Optional[str] = None
     requires_review: bool = False
     taco_flag_count: int = 0
+    comparison: Optional[dict] = None
 
 
 class OrderListItem(BaseModel):
@@ -159,8 +175,8 @@ class OrderDetailLineItem(BaseModel):
     quantity: int
     selected_vendor_id: Optional[int] = None
     vendor_name: Optional[str] = None
-    unit_price: float
-    line_total: float
+    unit_price: Optional[float] = None
+    line_total: Optional[float] = None
     item_note: Optional[str] = None
     flag: Optional[str] = None
 
@@ -184,6 +200,7 @@ class OrderDetailOut(BaseModel):
     review_status: str = 'not_required'
     review_note: Optional[str] = None
     taco_flag_count: int = 0
+    comparison: Optional[dict] = None
 
 
 class SpendSummaryOut(BaseModel):
@@ -198,7 +215,37 @@ class SpendSummaryOut(BaseModel):
 class ParSettingOut(BaseModel):
     product_id: int
     par_value: int
+    locked_vendor_id: Optional[int] = None
     model_config = {"from_attributes": True}
+
+
+class VendorPriceSummary(BaseModel):
+    vendor_id: int
+    vendor_name: str
+    price: float
+
+
+class ParSettingWithPricesOut(BaseModel):
+    product_id: int
+    product_name: str
+    par_value: Optional[int] = None
+    locked_vendor_id: Optional[int] = None
+    cheapest_price: Optional[float] = None
+    cheapest_vendor_id: Optional[int] = None
+    cheapest_vendor_name: Optional[str] = None
+    unit: Optional[str] = None
+    available_vendors: List[VendorPriceSummary] = []
+    muted: bool = False
+    is_deleted: bool = False
+
+
+class VendorLockIn(BaseModel):
+    locked_vendor_id: Optional[int] = None
+
+
+class PriceUpdateIn(BaseModel):
+    price: float
+    unit: Optional[str] = None
 
 
 class ParSettingIn(BaseModel):
@@ -208,3 +255,12 @@ class ParSettingIn(BaseModel):
 class OrderReviewIn(BaseModel):
     review_status: str
     review_note: Optional[str] = None
+
+
+class PatchOrderIn(BaseModel):
+    review_status: Optional[str] = None
+    review_note: Optional[str] = None
+    items: Optional[List[SaveOrderItemIn]] = None
+    vendor_splits: Optional[List[SaveOrderVendorSplitIn]] = None
+    total_cost: Optional[float] = None
+    savings_vs_worst: Optional[float] = None
