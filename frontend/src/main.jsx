@@ -9,6 +9,7 @@ import QuickOrder from './pages/QuickOrder'
 import OrderAssembly from './pages/OrderAssembly'
 import OrderDetail from './pages/OrderDetail'
 import JohnsGlasses from './pages/JohnsGlasses'
+import InventoryCount from './pages/InventoryCount'
 import './index.css'
 
 function OrderLayout() {
@@ -32,6 +33,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route element={<OrderLayout />}>
           <Route path="/quick-order" element={<QuickOrder />} />
+          <Route path="/inventory-count" element={<InventoryCount />} />
           <Route path="/order-assembly" element={<OrderAssembly />} />
         </Route>
         <Route path="/history/:id" element={<OrderDetail />} />

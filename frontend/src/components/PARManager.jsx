@@ -77,12 +77,12 @@ export default function PARManager() {
   const groupedProducts = useMemo(() => {
     const groups = {}
     filteredProducts.forEach(p => {
-      const cat = p.category_name || 'Uncategorized'
+      const cat = categories.find(c => c.id === p.category_id)?.name || 'Uncategorized'
       if (!groups[cat]) groups[cat] = []
       groups[cat].push(p)
     })
     return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b))
-  }, [filteredProducts])
+  }, [filteredProducts, categories])
 
   const toggleCategory = (catName) => {
     setExpandedCategories(prev => ({ ...prev, [catName]: !prev[catName] }))
