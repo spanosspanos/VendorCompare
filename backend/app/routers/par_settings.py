@@ -50,6 +50,7 @@ def list_par_settings_with_prices(location_id: int = 1, db: Session = Depends(ge
             "vendor_name": vendor_name,
             "price": price.price,
             "unit": price.unit,
+            "is_manual": price.is_manual,
         })
 
     # Get PAR settings for location
@@ -62,7 +63,7 @@ def list_par_settings_with_prices(location_id: int = 1, db: Session = Depends(ge
         par = par_map.get(product.id)
 
         available_vendors = [
-            VendorPriceSummary(vendor_id=vp["vendor_id"], vendor_name=vp["vendor_name"], price=vp["price"])
+            VendorPriceSummary(vendor_id=vp["vendor_id"], vendor_name=vp["vendor_name"], price=vp["price"], is_manual=vp.get("is_manual", False))
             for vp in vendor_prices
         ]
 
@@ -79,6 +80,7 @@ def list_par_settings_with_prices(location_id: int = 1, db: Session = Depends(ge
             cheapest_price=cheapest["price"] if cheapest else None,
             cheapest_vendor_id=cheapest["vendor_id"] if cheapest else None,
             cheapest_vendor_name=cheapest["vendor_name"] if cheapest else None,
+            cheapest_is_manual=cheapest["is_manual"] if cheapest else False,
             unit=cheapest["unit"] if cheapest else None,
             available_vendors=available_vendors,
             muted=product.muted,

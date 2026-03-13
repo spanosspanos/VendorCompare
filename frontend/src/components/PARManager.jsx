@@ -32,6 +32,7 @@ export default function PARManager() {
   const [addItemSaving, setAddItemSaving] = useState(false)
 
   const [expandedCategories, setExpandedCategories] = useState({})
+  const [noVendorFlag, setNoVendorFlag] = useState({}) // FR-PRICE-01: products with no vendor
 
   const menuRef = useRef(null)
 
@@ -136,17 +137,23 @@ export default function PARManager() {
       setEditingPrice((prev) => ({ ...prev, [product.product_id]: false }))
       return
     }
+
+    // FR-PRICE-01: Block edit if no vendor assigned
+    const vendorId = product.locked_vendor_id ?? product.cheapest_vendor_id
+    if (!vendorId) {
+      setNoVendorFlag((prev) => ({ ...prev, [product.product_id]: true }))
+      setEditingPrice((prev) => ({ ...prev, [product.product_id]: false }))
+      return
+    }
+
     setProducts((prev) =>
       prev.map((p) =>
-        p.product_id === product.product_id ? { ...p, cheapest_price: val } : p
+        p.product_id === product.product_id ? { ...p, cheapest_price: val, cheapest_is_manual: true } : p
       )
     )
     setEditingPrice((prev) => ({ ...prev, [product.product_id]: false }))
     try {
-      const vendorId = product.locked_vendor_id ?? product.cheapest_vendor_id
-      if (vendorId) {
-        await updatePrice(product.product_id, vendorId, val, product.unit || 'each')
-      }
+      await updatePrice(product.product_id, vendorId, val, product.unit || 'each')
     } catch {
       // silently fail
     }
@@ -159,6 +166,14 @@ export default function PARManager() {
         p.product_id === product.product_id ? { ...p, locked_vendor_id: vendorId } : p
       )
     )
+    // FR-PRICE-01: clear the no-vendor flag when a vendor is assigned
+    if (vendorId) {
+      setNoVendorFlag((prev) => {
+        const next = { ...prev }
+        delete next[product.product_id]
+        return next
+      })
+    }
     try {
       await updateVendorLock(product.product_id, vendorId)
     } catch {
@@ -398,6 +413,7 @@ export default function PARManager() {
         const isMenuOpen = openMenu === product.product_id
         const isRenaming = renamingId === product.product_id
         const isDeleteConfirm = deleteConfirmId === product.product_id
+        const hasNoVendorFlag = !!noVendorFlag[product.product_id]
 
         return (
           <div
@@ -440,21 +456,37 @@ export default function PARManager() {
                     className="mt-0.5 w-20 text-xs border border-[#00C0C8] rounded px-1.5 py-0.5 bg-[#0E1214] text-[#00C0C8] focus:outline-none"
                   />
                 ) : (
-                  <button
-                    onClick={() => handlePriceClick(product)}
-                    className="mt-0.5 text-xs text-[#8A9099] hover:text-[#00C0C8] transition-colors text-left"
-                    title="Click to edit price"
-                  >
-                    {(() => {
-                      const lockedVendor = product.locked_vendor_id != null
-                        ? (product.available_vendors || []).find(v => v.vendor_id === product.locked_vendor_id)
-                        : null
-                      const effectivePrice = lockedVendor ? lockedVendor.price : product.cheapest_price
-                      return effectivePrice != null
-                        ? `$${Number(effectivePrice).toFixed(2)}/${product.unit || 'ea'}`
-                        : '—'
-                    })()}
-                  </button>
+                  <>
+                    <button
+                      onClick={() => handlePriceClick(product)}
+                      className="mt-0.5 text-xs hover:text-[#00C0C8] transition-colors text-left"
+                      title="Click to edit price"
+                      style={{
+                        color: (() => {
+                          const lockedVendor = product.locked_vendor_id != null
+                            ? (product.available_vendors || []).find(v => v.vendor_id === product.locked_vendor_id)
+                            : null
+                          // FR-PRICE-02: amber for manually set prices
+                          const isManual = lockedVendor ? lockedVendor.is_manual : product.cheapest_is_manual
+                          return isManual ? '#F59E0B' : '#8A9099'
+                        })()
+                      }}
+                    >
+                      {(() => {
+                        const lockedVendor = product.locked_vendor_id != null
+                          ? (product.available_vendors || []).find(v => v.vendor_id === product.locked_vendor_id)
+                          : null
+                        const effectivePrice = lockedVendor ? lockedVendor.price : product.cheapest_price
+                        return effectivePrice != null
+                          ? `$${Number(effectivePrice).toFixed(2)}/${product.unit || 'ea'}`
+                          : '—'
+                      })()}
+                    </button>
+                    {/* FR-PRICE-01: no-vendor flag */}
+                    {hasNoVendorFlag && (
+                      <span className="mt-0.5 text-xs text-amber-500">Must select a vendor.</span>
+                    )}
+                  </>
                 )}
               </div>
 

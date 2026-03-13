@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useOrder } from '../context/OrderContext'
 import { useTour } from '../context/TourContext'
+import { useAuth } from '../context/AuthContext'
 import { getPendingReviewOrders, deleteOrder } from '../api'
 import CartModal from './CartModal'
 import { DEMO_MODE } from './TourGuide'
@@ -10,6 +11,7 @@ import { countAssembledOrders } from '../utils/assembledOrders'
 
 export default function Header() {
   const { selectedItems } = useOrder()
+  const { role } = useAuth()
   const itemCount = Object.keys(selectedItems).length
   const [assembledCount, setAssembledCount] = useState(countAssembledOrders())
   const location = useLocation()
@@ -129,16 +131,18 @@ export default function Header() {
             )}
           </button>
 
-          {/* John's Glasses — no badge */}
-          <Link to="/glasses" data-tour="glasses-icon" className="relative p-3 flex items-center" aria-label="John's Glasses">
-            <svg width="24" height="12" viewBox="0 0 28 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="1" y="2" width="10" height="8" rx="4" stroke="white" strokeWidth="2" fill="none"/>
-              <rect x="17" y="2" width="10" height="8" rx="4" stroke="white" strokeWidth="2" fill="none"/>
-              <line x1="11" y1="6" x2="17" y2="6" stroke="white" strokeWidth="2"/>
-              <line x1="0" y1="4" x2="1" y2="4" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="27" y1="4" x2="28" y2="4" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            </svg>
-          </Link>
+          {/* John's Glasses — admin only, not rendered at all for user sessions */}
+          {role === 'admin' && (
+            <Link to="/glasses" data-tour="glasses-icon" className="relative p-3 flex items-center" aria-label="John's Glasses">
+              <svg width="24" height="12" viewBox="0 0 28 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="1" y="2" width="10" height="8" rx="4" stroke="white" strokeWidth="2" fill="none"/>
+                <rect x="17" y="2" width="10" height="8" rx="4" stroke="white" strokeWidth="2" fill="none"/>
+                <line x1="11" y1="6" x2="17" y2="6" stroke="white" strokeWidth="2"/>
+                <line x1="0" y1="4" x2="1" y2="4" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                <line x1="27" y1="4" x2="28" y2="4" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </Link>
+          )}
 
           {/* Margarita Glass — employee pending orders */}
           <button

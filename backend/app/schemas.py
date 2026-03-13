@@ -67,6 +67,7 @@ class PriceOut(BaseModel):
     unit_price: float
     unit: Optional[str] = None
     effective_date: Optional[datetime] = None
+    is_manual: bool = False
 
     model_config = {"from_attributes": True}
 
@@ -224,6 +225,7 @@ class VendorPriceSummary(BaseModel):
     vendor_id: int
     vendor_name: str
     price: float
+    is_manual: bool = False
 
 
 class ParSettingWithPricesOut(BaseModel):
@@ -235,6 +237,7 @@ class ParSettingWithPricesOut(BaseModel):
     cheapest_price: Optional[float] = None
     cheapest_vendor_id: Optional[int] = None
     cheapest_vendor_name: Optional[str] = None
+    cheapest_is_manual: bool = False
     unit: Optional[str] = None
     available_vendors: List[VendorPriceSummary] = []
     muted: bool = False

@@ -3,7 +3,9 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { OrderProvider } from './context/OrderContext'
 import { TourContext } from './context/TourContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import TourGuide from './components/TourGuide'
+import PINGate from './components/PINGate'
 import Home from './pages/Home'
 import QuickOrder from './pages/QuickOrder'
 import OrderAssembly from './pages/OrderAssembly'
@@ -22,6 +24,19 @@ function OrderLayout() {
 
 function App() {
   const [tourRunning, setTourRunning] = useState(false)
+  const { token, role, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+        <div className="text-white text-lg">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!token) {
+    return <PINGate />
+  }
 
   return (
     <TourContext.Provider value={{
@@ -37,7 +52,7 @@ function App() {
           <Route path="/order-assembly" element={<OrderAssembly />} />
         </Route>
         <Route path="/history/:id" element={<OrderDetail />} />
-        <Route path="/glasses" element={<JohnsGlasses />} />
+        {role === 'admin' && <Route path="/glasses" element={<JohnsGlasses />} />}
       </Routes>
       <TourGuide run={tourRunning} onStop={() => setTourRunning(false)} />
     </TourContext.Provider>
@@ -46,8 +61,10 @@ function App() {
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <BrowserRouter basename={import.meta.env.BASE_URL}>
-      <App />
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter basename={import.meta.env.BASE_URL}>
+        <App />
+      </BrowserRouter>
+    </AuthProvider>
   </React.StrictMode>,
 )

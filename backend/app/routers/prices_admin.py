@@ -15,6 +15,7 @@ from ..database import SessionLocal
 from ..models import Product, Vendor, AuditLog
 from ..scrapers.price_diff import compute_diff
 from ..scrapers.price_importer import import_confirmed_diffs
+from ..auth_deps import get_current_role, require_admin
 
 router = APIRouter(tags=["john"])
 
@@ -131,7 +132,9 @@ async def import_prices(
     file: UploadFile = File(...),
     vendor_id: int = Query(...),
     db: Session = Depends(get_db),
+    role: str = Depends(get_current_role),
 ):
+    require_admin(role)
     rows, column_mapping = _parse_file(file)
 
     products = db.query(Product).all()
@@ -169,13 +172,15 @@ class ConfirmPricesRequest(BaseModel):
 
 
 @router.post("/confirm-prices")
-def confirm_prices(payload: ConfirmPricesRequest, db: Session = Depends(get_db)):
+def confirm_prices(payload: ConfirmPricesRequest, db: Session = Depends(get_db), role: str = Depends(get_current_role)):
+    require_admin(role)
     count = import_confirmed_diffs(payload.diffs, payload.vendor_id, db)
     return {"imported": count}
 
 
 @router.get("/price-audit-log")
-def price_audit_log(db: Session = Depends(get_db)):
+def price_audit_log(db: Session = Depends(get_db), role: str = Depends(get_current_role)):
+    require_admin(role)
     entries = (
         db.query(AuditLog)
         .order_by(AuditLog.timestamp.desc())
@@ -199,7 +204,8 @@ def price_audit_log(db: Session = Depends(get_db)):
 
 
 @router.post("/scrape-usfoods")
-async def scrape_usfoods(db: Session = Depends(get_db)):
+async def scrape_usfoods(db: Session = Depends(get_db), role: str = Depends(get_current_role)):
+    require_admin(role)
     mock_mode = os.environ.get("USFOODS_MOCK", "").lower() in ("true", "1", "yes")
     has_creds = bool(os.environ.get("USFOODS_USERNAME"))
 

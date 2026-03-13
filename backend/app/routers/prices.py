@@ -58,6 +58,7 @@ def get_prices(
             unit_price=price.price,
             unit=price.unit,
             effective_date=price.updated_at,
+            is_manual=price.is_manual,
         )
         for price, product_name, vendor_name in results
     ]
@@ -79,6 +80,7 @@ def get_product_prices(
             unit_price=price.price,
             unit=price.unit,
             effective_date=price.updated_at,
+            is_manual=price.is_manual,
         )
         for price, product_name, vendor_name in results
     ]
@@ -105,6 +107,7 @@ def update_price(
         price=payload.price,
         unit=payload.unit,
         updated_at=datetime.now(timezone.utc),
+        is_manual=True,  # Manual edit from PARManager — mark as user-set price
     )
     db.add(new_price)
     db.commit()
@@ -119,4 +122,5 @@ def update_price(
         unit_price=new_price.price,
         unit=new_price.unit,
         effective_date=new_price.updated_at,
+        is_manual=new_price.is_manual,
     )

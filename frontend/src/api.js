@@ -91,4 +91,8 @@ export const patchProduct = (id, payload) => api.patch(`/products/${id}`, payloa
 export const createProduct = (payload) => api.post('/products/', payload)
 export const deleteProductPermanent = (id) => api.delete(`/products/${id}`)
 
+// Auth API
+export const loginUser = (pin) => api.post('/auth/login', { pin })
+export const getMe = (token) => api.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
+
 export default api

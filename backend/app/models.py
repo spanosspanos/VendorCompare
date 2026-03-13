@@ -64,6 +64,8 @@ class Price(Base):
     unit = Column(String)
     updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
+    is_manual = Column(Boolean, nullable=False, default=False)
+
     product = relationship("Product", back_populates="prices")
     vendor = relationship("Vendor", back_populates="prices")
 
@@ -145,3 +147,13 @@ class ParSetting(Base):
     product = relationship("Product")
     location = relationship("Location")
     locked_vendor = relationship("Vendor")
+
+
+class Employee(Base):
+    __tablename__ = "employees"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    hashed_pin = Column(String, nullable=False)
+    role = Column(String, nullable=False)  # 'user' or 'admin'
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
