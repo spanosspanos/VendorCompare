@@ -9,6 +9,7 @@ from sqlalchemy import func
 
 from ..database import get_db
 from ..models import Price, Product, Vendor, Order, OrderItem, OrderVendorSplit, ParSetting
+from ..auth_deps import get_current_role, require_admin
 from ..schemas import (
     AssembleOrderIn,
     AssembleOrderOut,
@@ -454,6 +455,36 @@ def patch_order(order_id: int, payload: PatchOrderIn, db: Session = Depends(get_
     db.commit()
     db.refresh(order)
     return _build_order_detail(order, db)
+
+
+@router.get("/archive")
+def get_orders_archive(db: Session = Depends(get_db), role: str = Depends(get_current_role)):
+    require_admin(role)
+    orders = db.query(Order).order_by(Order.created_at.desc()).all()
+    result = {}
+    for order in orders:
+        dt = order.created_at
+        if dt.tzinfo is None:
+            from datetime import timezone
+            dt = dt.replace(tzinfo=timezone.utc)
+        year = str(dt.year)
+        month = dt.strftime("%B")
+        if year not in result:
+            result[year] = {}
+        if month not in result[year]:
+            result[year][month] = []
+        item_count = db.query(func.count(OrderItem.id)).filter(OrderItem.order_id == order.id).scalar() or 0
+        result[year][month].append({
+            "id": order.id,
+            "created_at": order.created_at.isoformat(),
+            "status": order.status,
+            "total_cost": order.total_cost,
+            "savings_vs_worst": order.savings_vs_worst,
+            "review_status": order.review_status,
+            "item_count": item_count,
+            "taco_flag_count": order.taco_flag_count,
+        })
+    return result
 
 
 @router.delete("/{order_id}")

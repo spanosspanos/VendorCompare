@@ -1,4 +1,4 @@
-import SombreroHome from '../components/SombreroHome'
+import PageHeader from '../components/PageHeader'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CategorySection from '../components/CategorySection'
@@ -85,30 +85,25 @@ export default function QuickOrder() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0E1214]">
-      <header className="relative fixed top-0 left-0 right-0 h-[60px] bg-[#0E1214] text-white flex items-center px-4 z-50 shadow-md">
-        <button
-          onClick={() => navigate('/')}
-          className="p-2 -ml-1"
-          aria-label="Home"
-        ><SombreroHome /></button>
-        <h1 className="flex-1 text-center text-lg text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>Quick Order</h1>
-        {/* Cart clipboard */}
-        <button
-          onClick={() => setCartOpen(true)}
-          className="relative p-2 flex items-center"
-          aria-label="View cart"
-        >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-          {(totalSelected + assembledCount) > 0 && (
-            <span className="absolute top-0 right-0 bg-[#00C0C8] text-[#0E1214] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-              {totalSelected + assembledCount}
-            </span>
-          )}
-        </button>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-[#D4A017] opacity-45" />
-      </header>
+      <PageHeader
+        title="Quick Order"
+        rightContent={
+          <button
+            onClick={() => setCartOpen(true)}
+            className="relative p-2 flex items-center"
+            aria-label="View cart"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            {(totalSelected + assembledCount) > 0 && (
+              <span className="absolute top-0 right-0 bg-[#00C0C8] text-[#0E1214] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                {totalSelected + assembledCount}
+              </span>
+            )}
+          </button>
+        }
+      />
       <CartModal isOpen={cartOpen} onClose={() => setCartOpen(false)} />
 
       <main data-tour="quick-order-main" className="flex-1 overflow-y-auto pt-[60px] pb-[70px] px-3 py-3">

@@ -37,6 +37,7 @@ def list_par_settings_with_prices(location_id: int = 1, db: Session = Depends(ge
             & (Price.vendor_id == latest_sub.c.vendor_id)
             & (Price.updated_at == latest_sub.c.max_date),
         )
+        .filter(Vendor.is_muted == False, Vendor.is_deleted == False)
         .all()
     )
 

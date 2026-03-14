@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { getParSettingsWithPrices, upsertParSetting, updateVendorLock, updatePrice, patchProduct, createProduct, deleteProductPermanent, fetchCategories } from '../api'
 
-export default function PARManager() {
+export default function PARManager({ refreshKey }) {
   const [products, setProducts] = useState([])
   const [parValues, setParValues] = useState({})
   const [saveStatus, setSaveStatus] = useState({})
@@ -54,7 +54,7 @@ export default function PARManager() {
       .catch(() => setError('Failed to load products. Please try again.'))
       .finally(() => setLoading(false))
     fetchCategories().then(setCategories).catch(() => {})
-  }, [])
+  }, [refreshKey])
 
   // Close menu when clicking outside
   useEffect(() => {

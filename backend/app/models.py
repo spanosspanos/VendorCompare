@@ -33,6 +33,10 @@ class Vendor(Base):
     name = Column(String, nullable=False, unique=True)
     contact_email = Column(String)
     phone = Column(String)
+    display_name = Column(String, nullable=True)
+    connection_type = Column(String, nullable=False, default="manual")
+    is_muted = Column(Boolean, nullable=False, default=False)
+    is_deleted = Column(Boolean, nullable=False, default=False)
 
     prices = relationship("Price", back_populates="vendor")
 
@@ -157,3 +161,30 @@ class Employee(Base):
     hashed_pin = Column(String, nullable=False)
     role = Column(String, nullable=False)  # 'user' or 'admin'
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class VendorDocument(Base):
+    __tablename__ = "vendor_documents"
+    id = Column(Integer, primary_key=True, index=True)
+    vendor_id = Column(Integer, ForeignKey("vendors.id"), nullable=False)
+    filename = Column(String, nullable=False)
+    filepath = Column(String, nullable=False)
+    uploaded_by = Column(String, nullable=False)  # employee name from JWT
+    uploaded_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    item_count = Column(Integer, nullable=False, default=0)
+    is_most_recent = Column(Boolean, nullable=False, default=True)
+
+    vendor = relationship("Vendor")
+    archive_items = relationship("VendorArchiveItem", back_populates="document", cascade="all, delete-orphan")
+
+
+class VendorArchiveItem(Base):
+    __tablename__ = "vendor_archive_items"
+    id = Column(Integer, primary_key=True, index=True)
+    vendor_doc_id = Column(Integer, ForeignKey("vendor_documents.id"), nullable=False)
+    sku = Column(String, nullable=True)
+    description = Column(String, nullable=False)
+    price = Column(Float, nullable=True)
+    unit = Column(String, nullable=True)
+
+    document = relationship("VendorDocument", back_populates="archive_items")

@@ -2,15 +2,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import engine, Base, SessionLocal
-from .routers import categories, products, vendors, orders, prices, par_settings, prices_admin, auth
+from .routers import categories, products, vendors, orders, prices, par_settings, prices_admin, auth, employees, vault, vendor_docs
 
 Base.metadata.create_all(bind=engine)
 
 # Phase 012A migrations and seeds
 from .migrate_012a import up as migrate_012a_up
+from .migrate_012c import up as migrate_012c_up
 from .seed_employees import seed_employees
 
 migrate_012a_up()
+migrate_012c_up()
 
 _db = SessionLocal()
 try:
@@ -36,6 +38,9 @@ app.include_router(prices.router, prefix="/api/prices", tags=["prices"])
 app.include_router(par_settings.router, prefix="/api/par-settings", tags=["par-settings"])
 app.include_router(prices_admin.router, prefix="/api/john", tags=["john"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(employees.router, prefix="/api/employees", tags=["employees"])
+app.include_router(vault.router)
+app.include_router(vendor_docs.router)
 
 
 @app.get("/api/health")

@@ -1,4 +1,4 @@
-import SombreroHome from '../components/SombreroHome'
+import PageHeader from '../components/PageHeader'
 import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useOrder } from '../context/OrderContext'
@@ -117,16 +117,7 @@ export default function InventoryCount() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0E1214]">
-      <header className="relative fixed top-0 left-0 right-0 h-[60px] bg-[#0E1214] text-white flex items-center px-4 z-50 shadow-md">
-        <button
-          onClick={() => navigate('/')}
-          className="p-2 -ml-1"
-          aria-label="Home"
-        ><SombreroHome /></button>
-        <h1 className="flex-1 text-center text-lg text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>Inventory Count</h1>
-        <div className="w-10" /> {/* spacer for centering */}
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-[#D4A017] opacity-45" />
-      </header>
+      <PageHeader title="Inventory Count" />
 
       <main className="flex-1 overflow-y-auto pt-[60px] pb-[70px] px-3 py-3">
         {/* Search */}

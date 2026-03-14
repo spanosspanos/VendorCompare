@@ -1,11 +1,12 @@
-import SombreroHome from '../components/SombreroHome'
+import PageHeader from '../components/PageHeader'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import PARManager from '../components/PARManager'
 import OrderReviewQueue from '../components/OrderReviewQueue'
 import OrderDetailJohns from '../components/OrderDetailJohns'
 import OrderHistory from './OrderHistory'
-import PriceImport from '../components/PriceImport'
+import VaultTab from '../components/VaultTab'
+import EmployeeManagement from '../components/EmployeeManagement'
 import { getOrderDetail } from '../api'
 
 export default function JohnsGlasses() {
@@ -14,6 +15,7 @@ export default function JohnsGlasses() {
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [actionedIds, setActionedIds] = useState([])
   const [confirmation, setConfirmation] = useState(null) // { orderId, action }
+  const [vendorRevision, setVendorRevision] = useState(0)
   const confirmTimerRef = useRef(null)
 
   const handleSelectOrder = (order) => {
@@ -66,30 +68,10 @@ export default function JohnsGlasses() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0E1214]">
-      {/* Header */}
-      <header className="relative fixed top-0 left-0 right-0 h-[60px] bg-[#0E1214] text-white flex items-center justify-between px-4 z-50 shadow-md">
-        {/* Back to Kitchen */}
-        <button
-          onClick={() => navigate('/')}
-          className="p-2 -ml-1"
-          aria-label="Home"
-        ><SombreroHome /></button>
-
-        <div className="flex items-center gap-2">
-          <svg width="28" height="14" viewBox="0 0 28 14" fill="none" xmlns="http://www.w3.org/2000/svg" className="opacity-90">
-            <rect x="1" y="2" width="10" height="8" rx="4" stroke="white" strokeWidth="2" fill="none"/>
-            <rect x="17" y="2" width="10" height="8" rx="4" stroke="white" strokeWidth="2" fill="none"/>
-            <line x1="11" y1="6" x2="17" y2="6" stroke="white" strokeWidth="2"/>
-            <line x1="0" y1="4" x2="1" y2="4" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="27" y1="4" x2="28" y2="4" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
-          <h1 className="text-lg font-semibold" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>John's Glasses</h1>
-        </div>
-
-        {/* Spacer to balance the header */}
-        <div className="w-[70px]" />
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-[#D4A017] opacity-45" />
-      </header>
+      <PageHeader
+        title="John's Glasses"
+        icons={[{ emoji: '👓', label: 'glasses' }, { emoji: '🍸', label: 'martini' }, { emoji: '📋', label: 'clipboard' }]}
+      />
 
       {/* Tab navigation — pinned below header */}
       <div className="fixed top-[60px] left-0 right-0 bg-[#0E1214] border-b border-[#2A343C] z-40">
@@ -117,14 +99,24 @@ export default function JohnsGlasses() {
             Order History
           </button>
           <button
-            onClick={() => { setActiveTab('prices'); sessionStorage.setItem('johnsGlassesTab', 'prices') }}
+            onClick={() => { setActiveTab('employees'); sessionStorage.setItem('johnsGlassesTab', 'employees') }}
             className={`flex-1 min-h-[44px] py-3 text-sm font-medium transition-colors ${
-              activeTab === 'prices'
+              activeTab === 'employees'
+                ? 'text-[#D4A017] border-b-2 border-[#D4A017]'
+                : 'text-[#8A9099] border-b-2 border-transparent hover:text-[#F0EDE8]'
+            }`}
+          >
+            Employees
+          </button>
+          <button
+            onClick={() => { setActiveTab('vault'); sessionStorage.setItem('johnsGlassesTab', 'vault') }}
+            className={`flex-1 min-h-[44px] py-3 text-sm font-medium transition-colors ${
+              activeTab === 'vault'
                 ? 'text-[#00C0C8] border-b-2 border-[#00C0C8]'
                 : 'text-[#8A9099] border-b-2 border-transparent hover:text-[#F0EDE8]'
             }`}
           >
-            Prices
+            Vault
           </button>
 
         </div>
@@ -166,7 +158,7 @@ export default function JohnsGlasses() {
             {/* Gold ornamental section divider between queue and PAR manager */}
             <div className="gold-divider mx-1" />
             <section>
-              <PARManager />
+              <PARManager refreshKey={vendorRevision} />
             </section>
           </>
         )}
@@ -175,10 +167,13 @@ export default function JohnsGlasses() {
           <OrderHistory embedded onReopen={handleReopen} />
         )}
 
-        {activeTab === 'prices' && (
-          <PriceImport />
+        {activeTab === 'vault' && (
+          <VaultTab onVendorUpdate={() => setVendorRevision(v => v + 1)} />
         )}
 
+        {activeTab === 'employees' && (
+          <EmployeeManagement />
+        )}
 
       </main>
     </div>

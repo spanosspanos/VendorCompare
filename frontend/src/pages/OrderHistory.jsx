@@ -1,7 +1,7 @@
-import SombreroHome from '../components/SombreroHome'
+import PageHeader from '../components/PageHeader'
 import { useState, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { getOrders, getOrderSummary, exportOrdersCsv } from '../api'
+import api, { getOrders, getOrderSummary, exportOrdersCsv } from '../api'
 
 const PERIODS = [
   { value: 'week', label: 'This Week' },
@@ -29,6 +29,10 @@ export default function OrderHistory({ embedded = false, onReopen = null }) {
   const [showDatePicker, setShowDatePicker] = useState(false)
   const [dateRange, setDateRange] = useState({ start: '', end: '' })
   const [archiveOpen, setArchiveOpen] = useState(false)
+  const [archiveData, setArchiveData] = useState(null)
+  const [archiveDataLoading, setArchiveDataLoading] = useState(false)
+  const [selectedPeriod, setSelectedPeriod] = useState(null)
+  const [archivePeriodOrders, setArchivePeriodOrders] = useState([])
 
   useEffect(() => {
     setLoading(true)
@@ -87,7 +91,20 @@ export default function OrderHistory({ embedded = false, onReopen = null }) {
   )
 
   const archiveButton = (
-    <button onClick={() => setArchiveOpen(true)} className="flex items-center gap-1.5 px-4 py-2 min-h-[36px] text-sm font-medium text-[#8A9099] border border-[#2A343C] rounded-lg bg-[#222C33] active:opacity-75">
+    <button onClick={async () => {
+      setArchiveOpen(true)
+      setArchiveDataLoading(true)
+      try {
+        const token = localStorage.getItem('vc_token')
+        const headers = token ? { Authorization: `Bearer ${token}` } : {}
+        const res = await api.get('/orders/archive', { headers })
+        setArchiveData(res.data)
+      } catch {
+        setArchiveData({})
+      } finally {
+        setArchiveDataLoading(false)
+      }
+    }} className="flex items-center gap-1.5 px-4 py-2 min-h-[36px] text-sm font-medium text-[#8A9099] border border-[#2A343C] rounded-lg bg-[#222C33] active:opacity-75">
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8l1 12h12L19 8M10 12h4" />
       </svg>
@@ -103,16 +120,43 @@ export default function OrderHistory({ embedded = false, onReopen = null }) {
           <h2 className="text-base font-semibold text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>Order Archive</h2>
           <button onClick={() => setArchiveOpen(false)} className="text-[#8A9099] p-1"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
         </div>
-        <div className="text-sm text-[#F0EDE8] font-mono space-y-1">
-          <div>📁 2026</div>
-          <div className="pl-4">📁 February</div>
-          <div className="pl-4">📁 January</div>
-          <div>📁 2025</div>
-          <div className="pl-4">📁 December</div>
-          <div className="pl-4">📁 November</div>
-          <div className="pl-4">📁 October</div>
-        </div>
-        <p className="text-xs text-[#8A9099] mt-4 text-center italic">Archive feature coming soon</p>
+        {archiveDataLoading ? (
+          <p className="text-sm text-[#8A9099]">Loading…</p>
+        ) : archiveData ? (
+          <div className="text-sm font-mono space-y-1 max-h-60 overflow-y-auto">
+            {Object.keys(archiveData).sort((a,b) => b-a).map(year => (
+              <div key={year}>
+                <div className="text-[#F0EDE8]">📁 {year}</div>
+                {Object.keys(archiveData[year]).map(month => (
+                  <button
+                    key={month}
+                    onClick={() => {
+                      setSelectedPeriod(`${year}-${month}`)
+                      setArchivePeriodOrders(archiveData[year][month])
+                    }}
+                    className={`pl-4 w-full text-left hover:text-[#00C0C8] transition-colors ${selectedPeriod === `${year}-${month}` ? 'text-[#00C0C8]' : 'text-[#8A9099]'}`}
+                  >
+                    📁 {month} ({archiveData[year][month].length})
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-[#8A9099]">No archive data.</p>
+        )}
+        {selectedPeriod && archivePeriodOrders.length > 0 && (
+          <div className="mt-4 border-t border-[#2A343C] pt-3 space-y-2 max-h-48 overflow-y-auto">
+            <p className="text-xs text-[#8A9099] mb-2">{selectedPeriod}</p>
+            {archivePeriodOrders.map(order => (
+              <div key={order.id} className="flex items-center justify-between text-xs border border-[#2A343C] rounded-xl px-3 py-2">
+                <span className="text-[#8A9099]">{new Date(order.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric'})}</span>
+                <span className="text-[#F0EDE8] font-bold">${order.total_cost.toFixed(2)}</span>
+                <span className="text-[#8A9099]">{order.item_count} items</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -296,13 +340,7 @@ export default function OrderHistory({ embedded = false, onReopen = null }) {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0E1214]">
-      {/* Header */}
-      <header className="relative fixed top-0 left-0 right-0 h-[60px] bg-[#0E1214] text-white flex items-center justify-between px-4 z-50 shadow-md">
-        <button onClick={() => navigate('/')} className="p-2 -ml-1" aria-label="Home"><SombreroHome /></button>
-        <h1 className="text-lg text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>Order History</h1>
-        <div className="w-10" />
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-[#D4A017] opacity-45" />
-      </header>
+      <PageHeader title="Order History" />
 
       <main className="flex-1 pt-[76px] pb-6 px-3">
         {/* Period filter + calendar icon */}

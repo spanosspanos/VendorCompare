@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 export default function PINGate() {
   const { login } = useAuth()
+  const navigate = useNavigate()
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -19,6 +21,7 @@ export default function PINGate() {
     setError('')
     try {
       await login(pin)
+      navigate('/', { replace: true })
     } catch {
       setError('Invalid PIN. Please try again.')
       setPin('')

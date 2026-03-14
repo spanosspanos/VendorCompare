@@ -1,3 +1,4 @@
+import PageHeader from './PageHeader'
 import SombreroHome from './SombreroHome'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
@@ -100,94 +101,85 @@ export default function Header() {
     setDeleteConfirm(null)
   }
 
+  const rightIcons = (
+    <div className="flex items-center gap-2">
+      {/* Bus icon — tour trigger */}
+      <button
+        data-tour="bus-btn"
+        onClick={startTour}
+        className="relative p-2 flex items-center"
+        aria-label="Take a tour"
+      >
+        <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>🚌</span>
+        {showBadge && (
+          <span
+            className="tour-badge-pulse absolute -top-3 -right-3 bg-[#00C0C8] text-white font-bold rounded-full px-2.5 py-1.5 whitespace-nowrap shadow-lg"
+            style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.72rem', letterSpacing: '0.02em', zIndex: 1 }}
+          >
+            Take A Tour!! 🚌
+          </span>
+        )}
+      </button>
+
+      {/* John's Glasses — admin only, not rendered at all for user sessions */}
+      {role === 'admin' && (
+        <Link to="/glasses" data-tour="glasses-icon" className="relative p-3 flex items-center" aria-label="John's Glasses">
+          <svg width="24" height="12" viewBox="0 0 28 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="2" width="10" height="8" rx="4" stroke="white" strokeWidth="2" fill="none"/>
+            <rect x="17" y="2" width="10" height="8" rx="4" stroke="white" strokeWidth="2" fill="none"/>
+            <line x1="11" y1="6" x2="17" y2="6" stroke="white" strokeWidth="2"/>
+            <line x1="0" y1="4" x2="1" y2="4" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+            <line x1="27" y1="4" x2="28" y2="4" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+        </Link>
+      )}
+
+      {/* Margarita Glass — employee pending orders */}
+      <button
+        data-tour="margarita-btn"
+        onClick={openMargarita}
+        className="relative p-3 flex items-center"
+        aria-label="My pending orders"
+      >
+        <svg width="20" height="22" viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 3 L10 13 L18 3 Z" stroke="white" strokeWidth="1.8" fill="none" strokeLinejoin="round"/>
+          <line x1="10" y1="13" x2="10" y2="18" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+          <line x1="6" y1="18" x2="14" y2="18" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+          <line x1="2" y1="3" x2="18" y2="3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
+        </svg>
+        {pendingCount > 0 && (
+          <span className="absolute top-0 right-0 bg-[#E07B35] text-[#0E1214] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {pendingCount}
+          </span>
+        )}
+      </button>
+
+      {/* Clipboard — always visible so tour Stop 3 can target it */}
+      <button
+        data-tour="clipboard-btn"
+        onClick={() => setCartOpen(true)}
+        className="relative p-3 flex items-center"
+        aria-label="View cart"
+      >
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        {(itemCount + assembledCount) > 0 && (
+          <span className="absolute top-0 right-0 bg-[#00C0C8] text-[#0E1214] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {itemCount + assembledCount}
+          </span>
+        )}
+      </button>
+    </div>
+  )
+
   return (
     <>
-      <header className="relative fixed top-0 left-0 right-0 h-[60px] bg-[#0E1214] text-white flex items-center justify-between px-4 z-50 shadow-lg">
-        {isHome ? (
-          <h1 className="text-lg font-bold" style={{fontFamily:"'Syne',sans-serif"}}>Cantina Orders</h1>
-        ) : (
-          <div className="flex items-center gap-3">
-            <Link to="/" className="p-1 flex items-center" aria-label="Home"><SombreroHome /></Link>
-            <span className="text-lg font-bold text-white" style={{fontFamily:"'Syne',sans-serif"}}>Cantina Orders</span>
-          </div>
-        )}
-
-        <div className="flex items-center gap-2">
-          {/* Bus icon — tour trigger */}
-          <button
-            data-tour="bus-btn"
-            onClick={startTour}
-            className="relative p-2 flex items-center"
-            aria-label="Take a tour"
-          >
-            <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>🚌</span>
-            {showBadge && (
-              <span
-                className="tour-badge-pulse absolute -top-3 -right-3 bg-[#00C0C8] text-white font-bold rounded-full px-2.5 py-1.5 whitespace-nowrap shadow-lg"
-                style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.72rem', letterSpacing: '0.02em', zIndex: 1 }}
-              >
-                Take A Tour!! 🚌
-              </span>
-            )}
-          </button>
-
-          {/* John's Glasses — admin only, not rendered at all for user sessions */}
-          {role === 'admin' && (
-            <Link to="/glasses" data-tour="glasses-icon" className="relative p-3 flex items-center" aria-label="John's Glasses">
-              <svg width="24" height="12" viewBox="0 0 28 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="1" y="2" width="10" height="8" rx="4" stroke="white" strokeWidth="2" fill="none"/>
-                <rect x="17" y="2" width="10" height="8" rx="4" stroke="white" strokeWidth="2" fill="none"/>
-                <line x1="11" y1="6" x2="17" y2="6" stroke="white" strokeWidth="2"/>
-                <line x1="0" y1="4" x2="1" y2="4" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                <line x1="27" y1="4" x2="28" y2="4" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </Link>
-          )}
-
-          {/* Margarita Glass — employee pending orders */}
-          <button
-            data-tour="margarita-btn"
-            onClick={openMargarita}
-            className="relative p-3 flex items-center"
-            aria-label="My pending orders"
-          >
-            {/* Margarita glass SVG */}
-            <svg width="20" height="22" viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* Glass body - V shape */}
-              <path d="M2 3 L10 13 L18 3 Z" stroke="white" strokeWidth="1.8" fill="none" strokeLinejoin="round"/>
-              {/* Stem */}
-              <line x1="10" y1="13" x2="10" y2="18" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-              {/* Base */}
-              <line x1="6" y1="18" x2="14" y2="18" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-              {/* Rim line */}
-              <line x1="2" y1="3" x2="18" y2="3" stroke="white" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-            {pendingCount > 0 && (
-              <span className="absolute top-0 right-0 bg-[#E07B35] text-[#0E1214] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {pendingCount}
-              </span>
-            )}
-          </button>
-
-          {/* Clipboard — always visible so tour Stop 3 can target it */}
-          <button
-            data-tour="clipboard-btn"
-            onClick={() => setCartOpen(true)}
-            className="relative p-3 flex items-center"
-            aria-label="View cart"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            {(itemCount + assembledCount) > 0 && (
-              <span className="absolute top-0 right-0 bg-[#00C0C8] text-[#0E1214] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {itemCount + assembledCount}
-              </span>
-            )}
-          </button>
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-[#D4A017] opacity-45" />
-      </header>
+      <PageHeader
+        title="Cantina Orders"
+        showBack={!isHome}
+        rightContent={rightIcons}
+      />
 
       {/* Margarita popup — pending orders list */}
       {margOpen && (
