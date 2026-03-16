@@ -394,7 +394,7 @@ export default function PARManager({ refreshKey }) {
           >
             <div className="flex items-center gap-2">
               <svg
-                className={`w-3.5 h-3.5 text-[#8A9099] transition-transform ${expandedCategories[categoryName] === true ? 'rotate-90' : ''}`}
+                className={`w-3.5 h-3.5 text-[#8A9099] transition-transform ${(search.trim() ? true : expandedCategories[categoryName] === true) ? 'rotate-90' : ''}`}
                 fill="none" stroke="currentColor" viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -405,7 +405,7 @@ export default function PARManager({ refreshKey }) {
           </button>
 
           {/* Products in this category */}
-          {expandedCategories[categoryName] === true && categoryProducts.map((product) => {
+          {(search.trim() ? true : expandedCategories[categoryName] === true) && categoryProducts.map((product) => {
         const status = saveStatus[product.product_id]
         const inputValue = parValues[product.product_id] ?? ''
         const isEditingPrice = editingPrice[product.product_id]

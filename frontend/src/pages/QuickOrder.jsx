@@ -1,5 +1,5 @@
 import PageHeader from '../components/PageHeader'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import CategorySection from '../components/CategorySection'
 import CartModal from '../components/CartModal'
@@ -15,6 +15,7 @@ export default function QuickOrder() {
   const { selectedItems, clearAll, upsertItem } = useOrder()
   const navigate = useNavigate()
   const location = useLocation()
+  const draftTimestampRef = useRef(new Date().toISOString())
 
   useEffect(() => {
     fetchProducts()
@@ -97,7 +98,7 @@ export default function QuickOrder() {
   return (
     <div className="flex flex-col h-screen bg-[#0E1214]">
       <PageHeader
-        title="Quick Order"
+        title={`New Order · ${new Date(draftTimestampRef.current).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })}`}
         rightContent={
           <button
             onClick={() => setCartOpen(true)}
@@ -176,7 +177,7 @@ export default function QuickOrder() {
               : 'bg-[#2A343C] text-[#8A9099] rounded-full cursor-not-allowed'
           }`}
           disabled={totalSelected === 0}
-          onClick={() => navigate('/order-assembly', { state: { notesToJohn: orderNote || null, origin_route: 'quick_order' } })}
+          onClick={() => navigate('/order-assembly', { state: { notesToJohn: orderNote || null, origin_route: 'quick_order', draft_timestamp: draftTimestampRef.current } })}
         >
           Assemble Orders
           {totalSelected > 0 && (

@@ -33,6 +33,8 @@ export default function OrderHistory({ embedded = false, onReopen = null }) {
   const [archiveDataLoading, setArchiveDataLoading] = useState(false)
   const [selectedPeriod, setSelectedPeriod] = useState(null)
   const [archivePeriodOrders, setArchivePeriodOrders] = useState([])
+  const [expandedArchiveOrder, setExpandedArchiveOrder] = useState(null)
+  const [archiveOrderDetail, setArchiveOrderDetail] = useState({})
 
   useEffect(() => {
     setLoading(true)
@@ -149,10 +151,55 @@ export default function OrderHistory({ embedded = false, onReopen = null }) {
           <div className="mt-4 border-t border-[#2A343C] pt-3 space-y-2 max-h-48 overflow-y-auto">
             <p className="text-xs text-[#8A9099] mb-2">{selectedPeriod}</p>
             {archivePeriodOrders.map(order => (
-              <div key={order.id} className="flex items-center justify-between text-xs border border-[#2A343C] rounded-xl px-3 py-2">
-                <span className="text-[#8A9099]">{new Date(order.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric'})}</span>
-                <span className="text-[#F0EDE8] font-bold">${order.total_cost.toFixed(2)}</span>
-                <span className="text-[#8A9099]">{order.item_count} items</span>
+              <div key={order.id} className="border border-[#2A343C] rounded-xl overflow-hidden">
+                <div
+                  onClick={async () => {
+                    const id = order.id
+                    if (expandedArchiveOrder === id) {
+                      setExpandedArchiveOrder(null)
+                      return
+                    }
+                    setExpandedArchiveOrder(id)
+                    if (!archiveOrderDetail[id]) {
+                      try {
+                        const token = localStorage.getItem('vc_token')
+                        const headers = token ? { Authorization: `Bearer ${token}` } : {}
+                        const res = await api.get(`/orders/${id}`, { headers })
+                        setArchiveOrderDetail(prev => ({ ...prev, [id]: res.data }))
+                      } catch {
+                        setArchiveOrderDetail(prev => ({ ...prev, [id]: null }))
+                      }
+                    }
+                  }}
+                  className="flex items-center justify-between text-xs px-3 py-2 cursor-pointer hover:bg-[#222C33] transition-colors"
+                >
+                  <span className="text-[#8A9099]">{new Date(order.created_at).toLocaleDateString('en-US', {month:'short', day:'numeric'})}</span>
+                  <span className="text-[#F0EDE8] font-bold">${order.total_cost.toFixed(2)}</span>
+                  <span className="text-[#8A9099]">{order.item_count} items</span>
+                  <span className="text-[#8A9099] ml-1">{expandedArchiveOrder === order.id ? '▾' : '▸'}</span>
+                </div>
+                {expandedArchiveOrder === order.id && (
+                  <div className="border-t border-[#2A343C] px-3 py-2 bg-[#0E1214]">
+                    {!archiveOrderDetail[order.id] && archiveOrderDetail[order.id] !== null ? (
+                      <div className="flex items-center gap-2 py-1">
+                        <div className="w-3 h-3 border-2 border-[#00C0C8] border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs text-[#8A9099]">Loading…</span>
+                      </div>
+                    ) : archiveOrderDetail[order.id] === null ? (
+                      <p className="text-xs text-[#8A9099]">Unable to load order detail</p>
+                    ) : (
+                      <div className="space-y-1">
+                        {(archiveOrderDetail[order.id].items || []).map((item, i) => (
+                          <div key={i} className="flex items-center justify-between text-xs">
+                            <span className="text-[#F0EDE8] flex-1 min-w-0 truncate">{item.product_name}</span>
+                            <span className="text-[#8A9099] mx-2 flex-shrink-0">{item.quantity} × ${item.unit_price?.toFixed(2) ?? '—'}</span>
+                            <span className="text-[#8A9099] flex-shrink-0">${item.line_total?.toFixed(2) ?? '—'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -42,6 +42,7 @@ export default function OrderAssembly() {
   )
   const [error, setError] = useState(null)
   const [saveState, setSaveState] = useState('idle') // 'idle'|'saving'|'saved'|'error'
+  const [savedOrderMeta, setSavedOrderMeta] = useState(null) // { id, created_at } after save
 
   // Inline editing state
   const [editedQtys, setEditedQtys] = useState({})
@@ -220,9 +221,12 @@ export default function OrderAssembly() {
       origin_route: location.state?.origin_route || null,
     }
     try {
-      await saveOrder(payload)
+      const res = await saveOrder(payload)
       if (currentAssembledOrderId) {
         removeAssembledOrder(currentAssembledOrderId)
+      }
+      if (res?.data?.id && res?.data?.created_at) {
+        setSavedOrderMeta({ id: res.data.id, created_at: res.data.created_at })
       }
       setSaveState('saved')
       window.dispatchEvent(new CustomEvent('orderSaved'))
@@ -353,11 +357,17 @@ export default function OrderAssembly() {
   const isPending = !!pendingOrderState
 
   const pendingEmployeeName = isPending && pendingOrderState.order.employee_name ? pendingOrderState.order.employee_name : null
+  const formatOrderDate = (isoStr) => new Date(isoStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
+  const draftTimestamp = location.state?.draft_timestamp
   const pageTitle = isTourMode
     ? 'Order #DEMO-001'
     : isPending
       ? (pendingEmployeeName ? `Order #${pendingOrderState.order.id} · ${pendingEmployeeName}` : `Order #${pendingOrderState.order.id}`)
-      : 'Order Review'
+      : savedOrderMeta
+        ? `Order #${savedOrderMeta.id} · ${formatOrderDate(savedOrderMeta.created_at)}`
+        : draftTimestamp
+          ? `New Order · ${formatOrderDate(draftTimestamp)}`
+          : 'Order Review'
 
   const SaveButton = (
     <button

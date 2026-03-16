@@ -1,5 +1,5 @@
 import PageHeader from '../components/PageHeader'
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useOrder } from '../context/OrderContext'
 import { fetchProducts } from '../api'
@@ -14,6 +14,7 @@ export default function InventoryCount() {
   const { clearAll, upsertItem } = useOrder()
   const navigate = useNavigate()
   const location = useLocation()
+  const draftTimestampRef = useRef(new Date().toISOString())
 
   useEffect(() => {
     fetchProducts()
@@ -97,7 +98,7 @@ export default function InventoryCount() {
     Object.values(pendingOrder).forEach(item => {
       upsertItem({ id: item.id, name: item.name, quantity: item.quantity })
     })
-    navigate('/order-assembly', { state: { origin_route: 'inventory_count' } })
+    navigate('/order-assembly', { state: { origin_route: 'inventory_count', draft_timestamp: draftTimestampRef.current } })
   }
 
   const handleOnHandChange = (productId, value) => {
