@@ -359,15 +359,22 @@ export default function OrderAssembly() {
   const pendingEmployeeName = isPending && pendingOrderState.order.employee_name ? pendingOrderState.order.employee_name : null
   const formatOrderDate = (isoStr) => new Date(isoStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
   const draftTimestamp = location.state?.draft_timestamp
-  const pageTitle = isTourMode
-    ? 'Order #DEMO-001'
-    : isPending
-      ? (pendingEmployeeName ? `Order #${pendingOrderState.order.id} · ${pendingEmployeeName}` : `Order #${pendingOrderState.order.id}`)
-      : savedOrderMeta
-        ? `Order #${savedOrderMeta.id} · ${formatOrderDate(savedOrderMeta.created_at)}`
-        : draftTimestamp
-          ? `New Order · ${formatOrderDate(draftTimestamp)}`
-          : 'Order Review'
+  const draftToken = location.state?.draft_token
+
+  let primaryTitle, secondaryLine
+  if (isTourMode) {
+    primaryTitle = 'Order #DEMO-001'
+    secondaryLine = null
+  } else if (isPending) {
+    primaryTitle = pendingEmployeeName ? `Order #${pendingOrderState.order.id} · ${pendingEmployeeName}` : `Order #${pendingOrderState.order.id}`
+    secondaryLine = null
+  } else if (savedOrderMeta) {
+    primaryTitle = `Order #${savedOrderMeta.id}`
+    secondaryLine = formatOrderDate(savedOrderMeta.created_at)
+  } else {
+    primaryTitle = draftToken ? `New Order #${draftToken}` : 'New Order'
+    secondaryLine = draftTimestamp ? formatOrderDate(draftTimestamp) : null
+  }
 
   const SaveButton = (
     <button
@@ -403,7 +410,12 @@ export default function OrderAssembly() {
       {/* Header */}
       <header className="relative fixed top-0 left-0 right-0 h-[60px] bg-[#0E1214] text-white flex items-center justify-center px-4 z-50 shadow-md">
         <button onClick={() => navigate('/')} className="absolute left-4" aria-label="Home"><SombreroHome /></button>
-        <h1 className="text-lg text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>{pageTitle}</h1>
+        <div className="flex flex-col items-center">
+          <h1 className="text-lg text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>{primaryTitle}</h1>
+          {secondaryLine && (
+            <p className="text-xs text-[#8A9099] mt-0.5">{secondaryLine}</p>
+          )}
+        </div>
         <div className="absolute bottom-0 left-0 right-0 h-px bg-[#D4A017] opacity-45" />
       </header>
 

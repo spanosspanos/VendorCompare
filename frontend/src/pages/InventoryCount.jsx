@@ -15,6 +15,7 @@ export default function InventoryCount() {
   const navigate = useNavigate()
   const location = useLocation()
   const draftTimestampRef = useRef(new Date().toISOString())
+  const draftTokenRef = useRef(`D-${Math.floor(1000 + Math.random() * 9000)}`)
 
   useEffect(() => {
     fetchProducts()
@@ -98,7 +99,7 @@ export default function InventoryCount() {
     Object.values(pendingOrder).forEach(item => {
       upsertItem({ id: item.id, name: item.name, quantity: item.quantity })
     })
-    navigate('/order-assembly', { state: { origin_route: 'inventory_count', draft_timestamp: draftTimestampRef.current } })
+    navigate('/order-assembly', { state: { origin_route: 'inventory_count', draft_timestamp: draftTimestampRef.current, draft_token: draftTokenRef.current } })
   }
 
   const handleOnHandChange = (productId, value) => {
@@ -138,7 +139,7 @@ export default function InventoryCount() {
 
   return (
     <div className="flex flex-col h-screen bg-[#0E1214]">
-      <PageHeader title="Inventory Count" />
+      <PageHeader title={`New Order #${draftTokenRef.current}`} />
 
       <main className="flex-1 overflow-y-auto pt-[60px] pb-[70px] px-3 py-3">
         {/* Search */}
