@@ -1,9 +1,41 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import api from '../api'
 
 function authHeaders() {
   const token = localStorage.getItem('vc_token')
   return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+function RecoveryCodePanel() {
+  const [maskedCode, setMaskedCode] = useState(null)
+  const [loadError, setLoadError] = useState(null)
+
+  useEffect(() => {
+    api.get('/auth/recovery-code-hint', { headers: authHeaders() })
+      .then(res => setMaskedCode(res.data.full_code))
+      .catch(() => setLoadError('Could not load recovery code hint.'))
+  }, [])
+
+  const baseUrl = window.location.origin + window.location.pathname.replace(/\/$/, '')
+
+  return (
+    <div className="mt-8 pt-6 border-t border-gray-700">
+      <h3 className="text-gray-400 text-xs font-semibold uppercase tracking-wider mb-3">Recovery Code (Skeleton Key)</h3>
+      {loadError ? (
+        <p className="text-red-400 text-sm">{loadError}</p>
+      ) : (
+        <div className="bg-gray-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-gray-300 text-sm font-mono tracking-widest">
+              {maskedCode || '????????'}
+            </span>
+          </div>
+          <p className="text-gray-500 text-xs mb-1">Write this down — needed if you're locked out.</p>
+          <p className="text-gray-600 text-xs">To use: go to <span className="font-mono text-gray-400">{baseUrl}/#/recover</span></p>
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function EmployeeManagement() {
@@ -304,6 +336,8 @@ export default function EmployeeManagement() {
           </button>
         </form>
       </div>
+
+      <RecoveryCodePanel />
     </div>
   )
 }

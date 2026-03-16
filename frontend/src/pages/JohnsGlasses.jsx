@@ -70,7 +70,7 @@ export default function JohnsGlasses() {
     <div className="flex flex-col min-h-screen bg-[#0E1214]">
       <PageHeader
         title="John's Glasses"
-        icons={[{ emoji: '👓', label: 'glasses' }, { emoji: '🍸', label: 'martini' }, { emoji: '📋', label: 'clipboard' }]}
+
       />
 
       {/* Tab navigation — pinned below header */}

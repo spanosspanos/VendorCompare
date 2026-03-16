@@ -89,6 +89,8 @@ class Order(Base):
     review_note = Column(Text, nullable=True)
     taco_flag_count = Column(Integer, nullable=False, default=0)
     comparison_json = Column(Text, nullable=True)
+    origin_route = Column(String, nullable=True)
+    employee_name = Column(String, nullable=True)
 
     location = relationship("Location", back_populates="orders")
     items = relationship("OrderItem", back_populates="order")
@@ -176,6 +178,16 @@ class VendorDocument(Base):
 
     vendor = relationship("Vendor")
     archive_items = relationship("VendorArchiveItem", back_populates="document", cascade="all, delete-orphan")
+
+
+class RecoveryCode(Base):
+    __tablename__ = "recovery_codes"
+    id = Column(Integer, primary_key=True)
+    hashed_code = Column(String, nullable=False)
+    hint_prefix = Column(String, nullable=True)  # first 4 digits of code, stored for hint display
+    plaintext_code = Column(String, nullable=True)  # full code stored plaintext — behind admin gate, not a password
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    last_used_at = Column(DateTime(timezone=True), nullable=True)
 
 
 class VendorArchiveItem(Base):

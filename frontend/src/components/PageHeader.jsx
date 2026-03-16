@@ -20,7 +20,7 @@ export default function PageHeader({ title, icons = [], rightContent, showBack =
         {showBack && (
           <button
             onClick={() => navigate('/')}
-            className="p-2 -ml-1"
+            className="p-2 -ml-1 transition-transform duration-150 hover:scale-110 hover:drop-shadow-[0_0_6px_rgba(240,200,48,0.6)]"
             aria-label="Home"
           >
             <SombreroHome />

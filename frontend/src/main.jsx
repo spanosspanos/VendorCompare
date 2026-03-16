@@ -12,6 +12,7 @@ import OrderAssembly from './pages/OrderAssembly'
 import OrderDetail from './pages/OrderDetail'
 import JohnsGlasses from './pages/JohnsGlasses'
 import InventoryCount from './pages/InventoryCount'
+import RecoverPage from './pages/RecoverPage'
 import './index.css'
 
 function OrderLayout() {
@@ -35,7 +36,12 @@ function App() {
   }
 
   if (!token) {
-    return <PINGate />
+    return (
+      <Routes>
+        <Route path="/recover" element={<RecoverPage />} />
+        <Route path="*" element={<PINGate />} />
+      </Routes>
+    )
   }
 
   return (

@@ -1,15 +1,32 @@
 import csv
 import io
 import json as json_lib
+import os
 from datetime import datetime, timezone, timedelta
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from jose import jwt, JWTError
 
 from ..database import get_db
 from ..models import Price, Product, Vendor, Order, OrderItem, OrderVendorSplit, ParSetting
 from ..auth_deps import get_current_role, require_admin
+
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-prod")
+ALGORITHM = "HS256"
+
+
+def get_current_employee_name(authorization: str = Header(default=None)) -> str:
+    """Extract employee name from JWT claims. Returns 'unknown' if missing/invalid."""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload.get("name") or payload.get("sub") or None
+    except JWTError:
+        return None
 from ..schemas import (
     AssembleOrderIn,
     AssembleOrderOut,
@@ -103,6 +120,8 @@ def _build_order_detail(order, db) -> OrderDetailOut:
         review_note=order.review_note,
         taco_flag_count=order.taco_flag_count,
         comparison=comparison,
+        origin_route=order.origin_route,
+        employee_name=order.employee_name,
     )
 
 
@@ -239,7 +258,11 @@ def assemble_order(payload: AssembleOrderIn, db: Session = Depends(get_db)):
 # ── Phase 3 endpoints ─────────────────────────────────────────────────────────
 
 @router.post("/", response_model=OrderListItem)
-def save_order(payload: SaveOrderIn, db: Session = Depends(get_db)):
+def save_order(
+    payload: SaveOrderIn,
+    db: Session = Depends(get_db),
+    employee_name: str = Depends(get_current_employee_name),
+):
     order = Order(
         location_id=payload.location_id,
         total_cost=payload.total_cost,
@@ -250,6 +273,8 @@ def save_order(payload: SaveOrderIn, db: Session = Depends(get_db)):
         review_status='pending' if payload.requires_review else 'not_required',
         taco_flag_count=payload.taco_flag_count,
         comparison_json=json_lib.dumps(payload.comparison) if payload.comparison else None,
+        origin_route=payload.origin_route,
+        employee_name=employee_name,
     )
     db.add(order)
     db.flush()
@@ -289,6 +314,8 @@ def save_order(payload: SaveOrderIn, db: Session = Depends(get_db)):
         requires_review=order.requires_review,
         review_status=order.review_status,
         taco_flag_count=order.taco_flag_count,
+        origin_route=order.origin_route,
+        employee_name=order.employee_name,
     )
 
 

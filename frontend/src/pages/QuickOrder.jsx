@@ -1,6 +1,6 @@
 import PageHeader from '../components/PageHeader'
 import { useState, useEffect, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import CategorySection from '../components/CategorySection'
 import CartModal from '../components/CartModal'
 import { useOrder } from '../context/OrderContext'
@@ -12,16 +12,14 @@ export default function QuickOrder() {
   const [expandedCategories, setExpandedCategories] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const { selectedItems } = useOrder()
+  const { selectedItems, clearAll, upsertItem } = useOrder()
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => {
     fetchProducts()
       .then((data) => {
         setCategories(data)
-        if (data.length > 0) {
-          setExpandedCategories({ [data[0].id]: true })
-        }
       })
       .catch((err) => {
         setError('Failed to load products. Please try again.')
@@ -29,6 +27,19 @@ export default function QuickOrder() {
       })
       .finally(() => setLoading(false))
   }, [])
+
+  // Restore order items when coming back from Margarita Glass reopen
+  useEffect(() => {
+    const restoredOrder = location.state?.restoredOrder
+    if (restoredOrder && restoredOrder.items && restoredOrder.items.length > 0) {
+      clearAll()
+      restoredOrder.items.forEach((item) => {
+        if (item.product_id && item.quantity > 0) {
+          upsertItem({ id: item.product_id, name: item.product_name, quantity: item.quantity })
+        }
+      })
+    }
+  }, [location.state?.restoredOrder])
 
   const toggleExpand = (categoryId) => {
     setExpandedCategories((prev) => ({
@@ -93,9 +104,7 @@ export default function QuickOrder() {
             className="relative p-2 flex items-center"
             aria-label="View cart"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
+            <span className="px-1 text-xl leading-none">📋</span>
             {(totalSelected + assembledCount) > 0 && (
               <span className="absolute top-0 right-0 bg-[#00C0C8] text-[#0E1214] text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                 {totalSelected + assembledCount}
@@ -167,7 +176,7 @@ export default function QuickOrder() {
               : 'bg-[#2A343C] text-[#8A9099] rounded-full cursor-not-allowed'
           }`}
           disabled={totalSelected === 0}
-          onClick={() => navigate('/order-assembly', { state: { notesToJohn: orderNote || null } })}
+          onClick={() => navigate('/order-assembly', { state: { notesToJohn: orderNote || null, origin_route: 'quick_order' } })}
         >
           Assemble Orders
           {totalSelected > 0 && (

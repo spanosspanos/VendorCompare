@@ -134,7 +134,7 @@ export default function OrderReviewQueue({ onSelectOrder, excludeIds = [] }) {
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <p className="text-xs text-[#8A9099]">{formattedDate} · {formattedTime}</p>
+                  <p className="text-xs text-[#8A9099]">{formattedDate} · {formattedTime}{order.employee_name ? ` · ${order.employee_name}` : ''}</p>
                   {weekPos && (
                     <span className="text-xs text-[#00C0C8] font-medium">
                       · Week #{weekPos.pos}

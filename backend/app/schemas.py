@@ -154,6 +154,7 @@ class SaveOrderIn(BaseModel):
     requires_review: bool = False
     taco_flag_count: int = 0
     comparison: Optional[dict] = None
+    origin_route: Optional[str] = None
 
 
 class OrderListItem(BaseModel):
@@ -167,6 +168,8 @@ class OrderListItem(BaseModel):
     requires_review: bool = False
     review_status: str = 'not_required'
     review_note: Optional[str] = None
+    origin_route: Optional[str] = None
+    employee_name: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -203,6 +206,8 @@ class OrderDetailOut(BaseModel):
     review_note: Optional[str] = None
     taco_flag_count: int = 0
     comparison: Optional[dict] = None
+    origin_route: Optional[str] = None
+    employee_name: Optional[str] = None
 
 
 class SpendSummaryOut(BaseModel):

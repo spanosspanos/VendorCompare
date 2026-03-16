@@ -217,6 +217,7 @@ export default function OrderAssembly() {
         total: vo.subtotal,
       })),
       comparison: result.comparison || null,
+      origin_route: location.state?.origin_route || null,
     }
     try {
       await saveOrder(payload)
@@ -283,6 +284,23 @@ export default function OrderAssembly() {
     }
   }
 
+  const handleBack = () => {
+    if (pendingOrderState) {
+      const origin = pendingOrderState.order.origin_route
+      if (origin === 'quick_order') {
+        navigate('/quick-order', { state: { restoredOrder: pendingOrderState.order } })
+      } else if (origin === 'inventory_count') {
+        navigate('/inventory', { state: { restoredOrder: pendingOrderState.order } })
+      } else {
+        // NULL origin_route — graceful fallback
+        navigate('/')
+      }
+    } else {
+      // Normal (non-reopen) flow — existing behavior
+      navigate(-1)
+    }
+  }
+
   const handleSave = () => {
     if (pendingOrderState) return handleSavePending()
     if (parState) return handleSavePAR()
@@ -334,7 +352,12 @@ export default function OrderAssembly() {
   const isPAR = !!parState
   const isPending = !!pendingOrderState
 
-  const pageTitle = isTourMode ? 'Order #DEMO-001' : isPending ? `Order #${pendingOrderState.order.id}` : 'Order Review'
+  const pendingEmployeeName = isPending && pendingOrderState.order.employee_name ? pendingOrderState.order.employee_name : null
+  const pageTitle = isTourMode
+    ? 'Order #DEMO-001'
+    : isPending
+      ? (pendingEmployeeName ? `Order #${pendingOrderState.order.id} · ${pendingEmployeeName}` : `Order #${pendingOrderState.order.id}`)
+      : 'Order Review'
 
   const SaveButton = (
     <button
@@ -610,7 +633,7 @@ export default function OrderAssembly() {
       ) : isPending ? (
         <footer className="fixed bottom-0 left-0 right-0 h-[70px] bg-[#1A2025] border-t border-[#2A343C] flex items-center justify-center px-4 z-50 gap-3">
           <button
-            onClick={() => navigate(-1)}
+            onClick={handleBack}
             className="flex-1 py-3 rounded-lg font-semibold text-sm border border-[#2A343C] text-[#F0EDE8] bg-[#222C33] active:opacity-75 transition-colors"
           >
             Back

@@ -1,7 +1,7 @@
 // SombreroHome — Printing Press artifact #001 (v2)
 // Redesigned from real sombrero reference (SVGRepo + anatomy study)
 // Key fixes: brim dramatically wider than crown, proper dome crown, pompom, upturned brim tips
-export default function SombreroHome({ className = 'w-8 h-8' }) {
+export default function SombreroHome({ className = 'w-6 h-6' }) {
   return (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" className={className} aria-hidden="true">
       {/* ── BRIM (dominant element — 95% of canvas width) ── */}
