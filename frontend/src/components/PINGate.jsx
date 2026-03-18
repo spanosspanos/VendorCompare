@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import HelpTooltip from './HelpTooltip'
 
 export default function PINGate() {
-  const { login } = useAuth()
+  const { login, deviceRecognized } = useAuth()
   const navigate = useNavigate()
   const [pin, setPin] = useState('')
   const [error, setError] = useState('')
@@ -35,6 +36,12 @@ export default function PINGate() {
       <div className="bg-gray-800 rounded-2xl p-10 shadow-2xl w-80 flex flex-col items-center gap-6">
         <h1 className="text-white text-2xl font-bold tracking-wide">VendorCompare</h1>
         <p className="text-gray-400 text-sm">Enter your PIN to continue</p>
+        {deviceRecognized && (
+          <div className="flex items-center gap-1 text-gray-400 text-xs">
+            <span>✓ Device recognized</span>
+            <HelpTooltip text="This device has been used with VendorCompare before. You still need to enter your PIN to sign in." />
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="w-full flex flex-col items-center gap-4">
           <input
             ref={inputRef}

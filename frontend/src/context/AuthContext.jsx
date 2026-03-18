@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react'
 import { loginUser, getMe } from '../api'
+import axios from 'axios'
 
 const AuthContext = createContext(null)
 
@@ -9,6 +10,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('vc_token'))
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [deviceRecognized, setDeviceRecognized] = useState(false)
   const idleTimer = useRef(null)
 
   const logout = useCallback(() => {
@@ -23,22 +25,29 @@ export function AuthProvider({ children }) {
     idleTimer.current = setTimeout(logout, IDLE_TIMEOUT)
   }, [logout])
 
-  // Validate token on mount
+  // Check device recognition + validate token on mount
   useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_BASE || '/api'
+    const checkDevice = axios.get(`${apiBase}/auth/check-device`, { withCredentials: true })
+      .then(res => setDeviceRecognized(res.data.recognized === true))
+      .catch(() => setDeviceRecognized(false))
+
     const storedToken = localStorage.getItem('vc_token')
     if (storedToken) {
-      getMe(storedToken)
-        .then(res => {
-          setRole(res.data.role)
-          setToken(storedToken)
-        })
-        .catch(() => {
-          localStorage.removeItem('vc_token')
-          setToken(null)
-        })
-        .finally(() => setLoading(false))
+      Promise.all([
+        checkDevice,
+        getMe(storedToken)
+          .then(res => {
+            setRole(res.data.role)
+            setToken(storedToken)
+          })
+          .catch(() => {
+            localStorage.removeItem('vc_token')
+            setToken(null)
+          }),
+      ]).finally(() => setLoading(false))
     } else {
-      setLoading(false)
+      checkDevice.finally(() => setLoading(false))
     }
   }, [])
 
@@ -50,14 +59,8 @@ export function AuthProvider({ children }) {
     ACTIVITY_EVENTS.forEach(e => window.addEventListener(e, resetIdleTimer))
     resetIdleTimer()
 
-    const handleVisibility = () => {
-      if (document.hidden) logout()
-    }
-    document.addEventListener('visibilitychange', handleVisibility)
-
     return () => {
       ACTIVITY_EVENTS.forEach(e => window.removeEventListener(e, resetIdleTimer))
-      document.removeEventListener('visibilitychange', handleVisibility)
       if (idleTimer.current) clearTimeout(idleTimer.current)
     }
   }, [token, logout, resetIdleTimer])
@@ -72,7 +75,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ token, role, login, logout, loading }}>
+    <AuthContext.Provider value={{ token, role, login, logout, loading, deviceRecognized }}>
       {children}
     </AuthContext.Provider>
   )

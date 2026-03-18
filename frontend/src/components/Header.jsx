@@ -1,5 +1,6 @@
 import PageHeader from './PageHeader'
 import SombreroHome from './SombreroHome'
+import HelpDrawer from './HelpDrawer'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useOrder } from '../context/OrderContext'
@@ -18,6 +19,9 @@ export default function Header() {
   const location = useLocation()
   const navigate = useNavigate()
   const isHome = location.pathname === '/'
+
+  const [helpOpen, setHelpOpen] = useState(false)
+  const helpRole = role === 'admin' ? 'admin' : 'user'
 
   const { tourRunning, startTour: contextStartTour } = useTour()
   const [pendingOrders, setPendingOrders] = useState([])
@@ -103,6 +107,15 @@ export default function Header() {
 
   const rightIcons = (
     <div className="flex items-center gap-2">
+      {/* Help "?" button */}
+      <button
+        onClick={() => setHelpOpen(true)}
+        aria-label="Open help"
+        className="ml-1 w-8 h-8 flex items-center justify-center rounded-lg text-[#8A9099] hover:text-[#F0EDE8] hover:bg-[#2A343C] transition-colors text-sm font-bold border border-[#2A343C]"
+      >
+        ?
+      </button>
+
       {/* Bus icon — tour trigger */}
       <button
         data-tour="bus-btn"
@@ -304,6 +317,7 @@ export default function Header() {
       )}
 
       <CartModal isOpen={cartOpen} onClose={() => setCartOpen(false)} />
+      <HelpDrawer isOpen={helpOpen} onClose={() => setHelpOpen(false)} role={helpRole} />
     </>
   )
 }

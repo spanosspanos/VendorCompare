@@ -1,0 +1,142 @@
+[
+  {
+    "id": "sign-in",
+    "title": "How to sign in",
+    "role": "user",
+    "tags": ["sign in", "login", "pin", "enter", "access"],
+    "content": "Open VendorCompare in your browser and enter your PIN on the sign-in screen. Your PIN is 4 digits if you are kitchen staff, or 6 digits if you are an Administrator. If you enter the wrong PIN three or more times, wait a moment before trying again. If you cannot remember your PIN, ask the Owner or Administrator to reset it."
+  },
+  {
+    "id": "quick-order",
+    "title": "Quick Order — step by step",
+    "role": "user",
+    "tags": ["quick order", "catalog", "browse", "order", "items", "select"],
+    "content": "From the Home screen, tap Quick Order to open the product catalog. Categories are collapsed by default — tap a category header to expand it, or use the search bar to find an item by name. Enter the quantity you want next to each item you need, then tap Review Order to see the full vendor split before submitting."
+  },
+  {
+    "id": "inventory-count",
+    "title": "Inventory Count — step by step",
+    "role": "user",
+    "tags": ["inventory", "count", "par", "on-hand", "stock", "walk"],
+    "content": "From the Home screen, tap Inventory Count. For each product, enter the quantity you currently have on hand. VendorCompare calculates the order quantity automatically using the formula: Order Qty = PAR − On Hand. Walk your entire kitchen — walk-in, dry storage, and reach-ins — before entering counts. When finished, tap Review Order."
+  },
+  {
+    "id": "cart",
+    "title": "What's in my cart?",
+    "role": "user",
+    "tags": ["cart", "modal", "items", "remove", "edit", "quantities"],
+    "content": "The cart is a staging area that holds all the items you have selected so far. You can view the cart at any time to edit quantities, remove items, or clear everything and start over. Nothing is saved until you tap Save on the Order Review screen — the cart is just a working list."
+  },
+  {
+    "id": "order-review",
+    "title": "Reading the Order Review screen",
+    "role": "user",
+    "tags": ["order review", "vendor split", "total", "subtotal", "savings", "review"],
+    "content": "Order Review shows your assembled order organized by vendor, with per-vendor subtotals and an estimated savings summary. Each item lists its product name, quantity, unit price, and line total. You can edit quantities directly on this screen and the totals will update. When everything looks right, tap Save to submit the order for approval."
+  },
+  {
+    "id": "flag",
+    "title": "How to flag an item 🚩",
+    "role": "user",
+    "tags": ["flag", "attention", "note", "concern", "kitchen", "owner"],
+    "content": "Tap the flag icon next to any item on the Order Review screen to flag it for the owner's attention. A text field will appear — enter a short note explaining your concern, then confirm the flag. The flag and your note will be highlighted in the Administrator's Review Queue so they are not overlooked."
+  },
+  {
+    "id": "order-notes",
+    "title": "Adding order notes",
+    "role": "user",
+    "tags": ["notes", "order notes", "kitchen note", "message", "comment"],
+    "content": "There are two kinds of notes. Item-level notes are added via the flag icon on individual products. Order-level notes are a free-text field on the Order Review screen that apply to the entire order — use them to communicate anything not specific to a single item, such as a delivery urgency or a vendor heads-up."
+  },
+  {
+    "id": "after-save",
+    "title": "What happens after I save?",
+    "role": "user",
+    "tags": ["save", "submit", "approval", "order number", "status", "after"],
+    "content": "When you tap Save, the order is assigned a sequential order number (e.g., Order #47) and placed in the Administrator's Review Queue. You will see a confirmation on screen. The order is now locked — you cannot edit it, but you can flag items or add notes before saving if you have concerns. The Administrator will review and approve the order before anything is sent to vendors."
+  },
+  {
+    "id": "forgot-pin",
+    "title": "I forgot my PIN",
+    "role": "user",
+    "tags": ["pin", "forgot", "reset", "locked out", "password"],
+    "content": "PINs can only be reset by the Owner or Administrator. Ask them to navigate to Employee Management in the admin portal and change your PIN. They can set you a new one immediately — the change takes effect right away, so they can tell you the new PIN and you can sign in."
+  },
+  {
+    "id": "review-queue",
+    "title": "Reviewing & approving orders",
+    "role": "admin",
+    "tags": ["review", "approve", "queue", "pending", "orders", "admin"],
+    "content": "The Review Queue shows all orders submitted by kitchen staff that are awaiting your approval. Open an order to see all items, vendor splits, costs, and any flags or notes from staff. You can approve the order as-is, edit quantities before approving, or reopen it if major changes are needed. Approving moves the order to Order History — it does not automatically send anything to vendors."
+  },
+  {
+    "id": "flagged-items",
+    "title": "Reading flagged items",
+    "role": "admin",
+    "tags": ["flag", "flagged", "staff note", "attention", "highlighted"],
+    "content": "Orders with flagged items are visually highlighted in the Review Queue so you spot them immediately. Inside the order, flagged items appear in a dedicated section with the staff member's note displayed. Review each flagged item carefully before approving — the kitchen is asking you to look at something specific."
+  },
+  {
+    "id": "order-history",
+    "title": "Order History & CSV export",
+    "role": "admin",
+    "tags": ["history", "past orders", "archive", "csv", "export", "filter"],
+    "content": "Order History contains a complete archive of all approved orders. Use the date filter to view orders by week, month, quarter, year, or all time. Tap any order to see the full detail including items, vendor splits, pricing, and notes. Use the CSV export to download order data for cost analysis or accounting — the export includes all line items, quantities, vendor assignments, and totals."
+  },
+  {
+    "id": "par-values",
+    "title": "Setting PAR values",
+    "role": "admin",
+    "tags": ["par", "stock level", "target", "inventory", "set", "configure"],
+    "content": "PAR stands for Periodic Automatic Replenishment — it is the target on-hand quantity for each product. Navigate to PAR Values in the admin portal and tap the PAR field for any product to edit it. Changes save automatically as you type. Set PAR values before the first Inventory Count so the system can calculate accurate order quantities."
+  },
+  {
+    "id": "par-tuning",
+    "title": "Tuning PAR over time",
+    "role": "admin",
+    "tags": ["par", "tuning", "adjust", "seasonal", "too high", "too low"],
+    "content": "PAR values should be reviewed regularly and adjusted as your operation evolves. If you are consistently running out of an item before the next order, increase its PAR. If you consistently have leftover stock, decrease it. Review all PAR values at least once per quarter and immediately after any significant menu change or shift in how often you order."
+  },
+  {
+    "id": "vendor-management",
+    "title": "Managing vendors (Vault)",
+    "role": "admin",
+    "tags": ["vault", "vendor", "add vendor", "edit", "manage", "suppliers"],
+    "content": "The Vault tab is the central hub for all vendor management. From here you can add new vendors, edit existing vendor details, mute vendors to exclude them from order splits, and view deleted vendors in the Graveyard. Deleted vendors can be restored at any time — no data is permanently lost."
+  },
+  {
+    "id": "mute-vendor",
+    "title": "Muting a vendor",
+    "role": "admin",
+    "tags": ["mute", "vendor", "exclude", "splits", "pause", "restore"],
+    "content": "Muting a vendor temporarily removes them from all order splits without deleting their record or pricing data. Navigate to the Vault tab, find the vendor, and toggle the Mute switch. To restore the vendor to active status, toggle the switch again — they will immediately return to eligibility for order splits."
+  },
+  {
+    "id": "employee-management",
+    "title": "Adding / editing employees",
+    "role": "admin",
+    "tags": ["employee", "staff", "add", "edit", "role", "user", "admin"],
+    "content": "Navigate to Employee Management in the admin portal to add, edit, or remove staff. To add an employee, tap Add Employee and enter their name, role (user or admin), and PIN. User PINs are 4 digits; admin PINs are 6 digits. Each PIN must be unique. Remove an employee when they leave the team to revoke their access immediately."
+  },
+  {
+    "id": "reset-pin",
+    "title": "Resetting a PIN",
+    "role": "admin",
+    "tags": ["pin", "reset", "change", "forgot", "employee", "update"],
+    "content": "To reset any employee's PIN, navigate to Employee Management and find their record. Tap the PIN field and enter a new value — the change takes effect immediately. Inform the employee of their new PIN. For admin PINs, you can reset your own PIN the same way while logged in."
+  },
+  {
+    "id": "recovery-code",
+    "title": "Recovery Code",
+    "role": "admin",
+    "tags": ["recovery", "code", "locked out", "emergency", "admin", "backup"],
+    "content": "The Recovery Code is a single-use emergency credential for situations where no administrator can log in. Enter it in place of a PIN on the sign-in screen to regain access. Once used, the code is consumed and must be regenerated. Navigate to the Recovery Code section in the admin portal to generate a new one, and store it securely — treat it like a master key."
+  },
+  {
+    "id": "troubleshooting",
+    "title": "Troubleshooting",
+    "role": "admin",
+    "tags": ["troubleshoot", "error", "problem", "fix", "issue", "debug", "slow", "missing"],
+    "content": "Common issues and fixes: If the app won't load, check that Docker containers are running and Caddy is configured correctly. If a PIN is rejected, verify the employee record and PIN length (4 digits for users, 6 for admins). If order splits look wrong, check whether a vendor is muted or has outdated pricing. If Order History is missing orders, check the date filter or whether the order is still pending in the Review Queue."
+  }
+]

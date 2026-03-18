@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { getParSettingsWithPrices, upsertParSetting, updateVendorLock, updatePrice, patchProduct, createProduct, deleteProductPermanent, fetchCategories } from '../api'
+import HelpTooltip from './HelpTooltip'
 
 export default function PARManager({ refreshKey }) {
   const [products, setProducts] = useState([])
@@ -299,7 +300,10 @@ export default function PARManager({ refreshKey }) {
   return (
     <div className="bg-[#1A2025] rounded-xl border border-[#2A343C] shadow-sm overflow-hidden">
       <div className="px-4 py-3 bg-[#222C33] border-b border-[#2A343C]">
-        <h2 className="text-base font-semibold text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>PAR Values</h2>
+        <div className="flex items-center gap-1">
+          <h2 className="text-base font-semibold text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>PAR Values</h2>
+          <HelpTooltip text="PAR is your target stock level. The system orders enough to bring you back to this number each time you run an Inventory Count." />
+        </div>
         <p className="text-xs text-[#8A9099] mt-0.5">Set target inventory levels, prices, and preferred vendors.</p>
       </div>
 

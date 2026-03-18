@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import api from '../api'
+import HelpTooltip from './HelpTooltip'
 
 function authHeaders() {
   const token = localStorage.getItem('vc_token')
@@ -332,7 +333,10 @@ export default function VaultTab({ onVendorUpdate }) {
                     {/* Mute toggle */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-[#F0EDE8]">Mute vendor</p>
+                        <div className="flex items-center gap-1">
+                          <p className="text-sm text-[#F0EDE8]">Mute vendor</p>
+                          <HelpTooltip text="Muting a vendor removes them from order splits without deleting their data. Unmute at any time to restore." />
+                        </div>
                         <p className="text-xs text-[#8A9099]">Hides from all comparisons and PAR views</p>
                       </div>
                       <button

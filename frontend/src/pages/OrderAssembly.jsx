@@ -359,7 +359,6 @@ export default function OrderAssembly() {
   const pendingEmployeeName = isPending && pendingOrderState.order.employee_name ? pendingOrderState.order.employee_name : null
   const formatOrderDate = (isoStr) => new Date(isoStr).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })
   const draftTimestamp = location.state?.draft_timestamp
-  const draftToken = location.state?.draft_token
 
   let primaryTitle, secondaryLine
   if (isTourMode) {
@@ -372,7 +371,7 @@ export default function OrderAssembly() {
     primaryTitle = `Order #${savedOrderMeta.id}`
     secondaryLine = formatOrderDate(savedOrderMeta.created_at)
   } else {
-    primaryTitle = draftToken ? `New Order #${draftToken}` : 'New Order'
+    primaryTitle = 'Order Review'
     secondaryLine = draftTimestamp ? formatOrderDate(draftTimestamp) : null
   }
 

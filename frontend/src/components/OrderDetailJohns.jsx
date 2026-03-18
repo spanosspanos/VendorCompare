@@ -1,10 +1,14 @@
 import { useState } from 'react'
 import jsPDF from 'jspdf'
+import JSZip from 'jszip'
 import { reviewOrder, patchOrder, assembleOrder } from '../api'
+import HelpTooltip from './HelpTooltip'
 
 const round2 = (n) => Math.round(n * 100) / 100
 
-function generatePDF(orderId, approvalTime, vendorSections, totalCost, savingsVsWorst, flaggedItems, notesToJohn) {
+const slugifyVendor = (name) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+
+function generatePDF(orderId, approvalTime, vs, flaggedItems, notesToJohn) {
   const doc = new jsPDF()
   let y = 22
 
@@ -25,8 +29,8 @@ function generatePDF(orderId, approvalTime, vendorSections, totalCost, savingsVs
   doc.line(15, y, 195, y)
   y += 8
 
-  // ── Vendor Sections ─────────────────────────────────────────────────────────
-  vendorSections.forEach((vs) => {
+  // ── Vendor Section ──────────────────────────────────────────────────────────
+  {
     if (y > 255) { doc.addPage(); y = 22 }
 
     doc.setFontSize(12)
@@ -63,26 +67,6 @@ function generatePDF(orderId, approvalTime, vendorSections, totalCost, savingsVs
     doc.text(`$${vs.subtotal.toFixed(2)}`, 195, y, { align: 'right' })
     doc.setFont('helvetica', 'normal')
     y += 9
-  })
-
-  // ── Totals ───────────────────────────────────────────────────────────────────
-  if (y > 255) { doc.addPage(); y = 22 }
-  doc.line(15, y, 195, y)
-  y += 8
-
-  doc.setFontSize(12)
-  doc.setFont('helvetica', 'bold')
-  doc.text('Order Total:', 130, y, { align: 'right' })
-  doc.text(`$${totalCost.toFixed(2)}`, 195, y, { align: 'right' })
-  y += 7
-
-  if (savingsVsWorst > 0) {
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(20, 130, 80)
-    doc.text(`Savings vs single-vendor: $${savingsVsWorst.toFixed(2)}`, 195, y, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
-    y += 8
   }
 
   // ── Notes to John ────────────────────────────────────────────────────────────
@@ -355,18 +339,22 @@ export default function OrderDetailJohns({ order, onBack, onAction, isReopen = f
           }))
         : vendorSections
 
-      const doc = generatePDF(
-        order.id,
-        approvalTime,
-        pdfVendorSections,
-        finalTotal,
-        finalSavings,
-        flaggedItems,
-        order.notes_to_john,
-      )
-
-      doc.save(`cantina-order-${order.id}.pdf`)
-      setPdfDoc(doc)
+      const zip = new JSZip()
+      pdfVendorSections.forEach((vs) => {
+        const doc = generatePDF(order.id, approvalTime, vs, flaggedItems, order.notes_to_john)
+        const pdfBlob = doc.output('blob')
+        zip.file(`cantina-order-${order.id}-${slugifyVendor(vs.vendorName)}.pdf`, pdfBlob)
+      })
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `cantina-order-${order.id}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      setPdfDoc(pdfVendorSections)
       setApprovalDone(true)
       onAction(order.id, 'approved')
     } catch {
@@ -389,9 +377,27 @@ export default function OrderDetailJohns({ order, onBack, onAction, isReopen = f
     }
   }
 
-  const handleDownloadAgain = () => {
-    if (pdfDoc) {
-      pdfDoc.save(`cantina-order-${order.id}.pdf`)
+  const handleDownloadAgain = async () => {
+    const approvalTime = new Date().toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit',
+    })
+    if (pdfDoc && Array.isArray(pdfDoc)) {
+      const zip = new JSZip()
+      pdfDoc.forEach((vs) => {
+        const doc = generatePDF(order.id, approvalTime, vs, flaggedItems, order.notes_to_john)
+        const pdfBlob = doc.output('blob')
+        zip.file(`cantina-order-${order.id}-${slugifyVendor(vs.vendorName)}.pdf`, pdfBlob)
+      })
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `cantina-order-${order.id}.zip`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
     }
   }
 
@@ -422,12 +428,14 @@ export default function OrderDetailJohns({ order, onBack, onAction, isReopen = f
               <span className="text-2xl font-bold text-[#F0EDE8]">${totalCost.toFixed(2)}</span>
               {/* Specific savings line when recalc data available; fallback to generic */}
               {specificSavings != null && specificSavings > 0 ? (
-                <p className="text-xs text-[#3DAA6E] font-medium mt-0.5">
+                <p className="text-xs text-[#3DAA6E] font-medium mt-0.5 flex items-center">
                   saved ${specificSavings.toFixed(2)} vs {worstVendor.vendor_name}
+                  <HelpTooltip text="Estimated savings compared to ordering everything from the single most expensive vendor." />
                 </p>
               ) : savingsVsWorst > 0 && (
-                <p className="text-xs text-[#3DAA6E] font-medium mt-0.5">
+                <p className="text-xs text-[#3DAA6E] font-medium mt-0.5 flex items-center">
                   saved ${savingsVsWorst.toFixed(2)} vs single-vendor
+                  <HelpTooltip text="Estimated savings compared to ordering everything from the single most expensive vendor." />
                 </p>
               )}
             </div>
@@ -501,6 +509,7 @@ export default function OrderDetailJohns({ order, onBack, onAction, isReopen = f
             <div className="flex items-center gap-1.5 mb-2">
               <span>🌮</span>
               <span className="text-xs font-semibold text-[#E07B35] uppercase tracking-wide">Flagged Items</span>
+              <HelpTooltip text="Flag this item to draw the owner's attention. Add a short note explaining your concern — they'll see it highlighted in the Review Queue." />
             </div>
             <div className="space-y-2">
               {flaggedItems.map((item) => (
@@ -574,7 +583,10 @@ export default function OrderDetailJohns({ order, onBack, onAction, isReopen = f
         {vendorSections.map((vs) => (
           <div key={vs.vendorId} className="bg-[#1A2025] rounded-xl border border-[#2A343C] shadow-sm mb-3 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-2.5 bg-[#222C33] border-b border-[#2A343C]">
-              <span className="text-base font-semibold text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>{vs.vendorName}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-base font-semibold text-[#F0EDE8]" style={{fontFamily:"'Syne',sans-serif",fontWeight:700}}>{vs.vendorName}</span>
+                <HelpTooltip text="Items are routed to this vendor because they offer the lowest price for each product in your order." />
+              </div>
               <span className="text-sm font-bold text-[#F0EDE8]">${vs.subtotal.toFixed(2)}</span>
             </div>
             <div className="divide-y divide-[#2A343C]">
