@@ -15,11 +15,13 @@ import { useAuth } from '../context/AuthContext'
  */
 export default function PageHeader({ title, icons = [], rightContent, showBack = true }) {
   const navigate = useNavigate()
-  const { role } = useAuth()
+  const { role, loading } = useAuth()
   const [helpOpen, setHelpOpen] = useState(false)
 
-  // Determine help role: admin if role === 'admin', else 'user'
-  const helpRole = role === 'admin' ? 'admin' : 'user'
+  // Determine help role: admin if role === 'admin', else 'user'.
+  // Wait until auth has resolved before committing — avoids a null role during
+  // the initial render flicker that could cause HelpDrawer to see an unexpected value.
+  const helpRole = loading ? null : (role === 'admin' ? 'admin' : 'user')
 
   return (
     <>

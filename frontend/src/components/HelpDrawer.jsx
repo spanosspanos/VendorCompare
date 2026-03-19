@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import helpContent from '../helpContent.json'
+import helpContentRaw from '../helpContent.json'
 
 /**
  * HelpDrawer — Slide-in help panel from the right.
@@ -13,13 +13,18 @@ export default function HelpDrawer({ isOpen, onClose, role }) {
   const [search, setSearch] = useState('')
   const backdropRef = useRef(null)
 
+  // Safety: ensure helpContent is always a usable array
+  const helpContent = Array.isArray(helpContentRaw) ? helpContentRaw : []
+  const topicsAvailable = helpContent.length > 0
+
   // Reset search when drawer opens
   useEffect(() => {
     if (isOpen) setSearch('')
   }, [isOpen])
 
-  // Filter by role
-  const roleTopics = role === 'admin'
+  // Filter by role — treat null/undefined/unknown as 'user'
+  const effectiveRole = role === 'admin' ? 'admin' : 'user'
+  const roleTopics = effectiveRole === 'admin'
     ? helpContent
     : helpContent.filter((t) => t.role === 'user')
 
@@ -83,8 +88,12 @@ export default function HelpDrawer({ isOpen, onClose, role }) {
 
         {/* Topics list */}
         <div className="flex-1 overflow-y-auto">
-          {filtered.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-[#8A9099]">No results for "{search}"</p>
+          {!topicsAvailable ? (
+            <p className="px-4 py-8 text-center text-sm text-[#8A9099]">Help topics unavailable</p>
+          ) : filtered.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-[#8A9099]">
+              {search.trim() ? `No results for "${search}"` : 'No help topics found'}
+            </p>
           ) : (
             <div className="divide-y divide-[#1A2025]">
               {filtered.map((topic) => (
@@ -101,7 +110,7 @@ export default function HelpDrawer({ isOpen, onClose, role }) {
         <div className="px-4 py-3 border-t border-[#2A343C] flex-shrink-0">
           <p className="text-xs text-[#8A9099] text-center">
             {filtered.length} topic{filtered.length !== 1 ? 's' : ''}
-            {role === 'admin' ? ' · Admin view' : ''}
+            {effectiveRole === 'admin' ? ' · Admin view' : ''}
           </p>
         </div>
       </div>
