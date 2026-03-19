@@ -5,7 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 // ── DEMO MODE ─────────────────────────────────────────────────────────────────
 // true  → pulsing "Take A Tour!!" badge + overlay click advances tour
 // false → bus icon only, no badge; Back/Next buttons only (overlay locked)
-const DEMO_MODE = true
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true'
 
 // ── Route per step (11 stops, index 0–10) ─────────────────────────────────────
 const STEP_ROUTES = [
