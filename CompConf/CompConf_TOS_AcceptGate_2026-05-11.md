@@ -16,7 +16,7 @@
 - Source: `electron/main.js` durable ToS IPC write now returns `{ ok, path/error }` and writes a local evidence record with `recorded_at`/`storage` metadata.
 - Build artifact: `frontend/dist/` rebuilt in electron mode and verified to contain ToS gate strings/version key.
 - Bundle: DMG not produced on this Linux/arm64 Forge host.
-- Commit: 23a8584 (`Add VendorCompare beta terms acceptance gate`).
+- Commit: primary implementation commit `1f1943b` (`Add VendorCompare beta terms acceptance gate`); final HEAD includes this CompConf correction note.
 - Deploy: N/A — no Hetzner deploy performed.
 
 ### Verification
