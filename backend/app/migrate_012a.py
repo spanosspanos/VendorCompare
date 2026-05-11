@@ -5,7 +5,13 @@ Down: recreates prices table without is_manual column
 import sqlite3
 import os
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "..", "vendorcompare.db")
+def _db_path():
+    url = os.environ.get('DATABASE_URL', '')
+    if url.startswith('sqlite:///'):
+        return url[len('sqlite:///'):]
+    return os.path.join(os.path.dirname(__file__), '..', 'vendorcompare.db')
+
+DB_PATH = _db_path()
 
 
 def up():

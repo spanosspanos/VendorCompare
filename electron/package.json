@@ -1,0 +1,46 @@
+{
+  "name": "vendorcompare",
+  "version": "1.0.0",
+  "description": "VendorCompare Desktop",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.13.0"
+  },
+  "build": {
+    "appId": "com.flos.vendorcompare",
+    "productName": "VendorCompare",
+    "mac": {
+      "category": "public.app-category.business",
+      "target": [{ "target": "dmg", "arch": ["arm64"] }],
+      "identity": null
+    },
+    "dmg": {
+      "title": "VendorCompare ${version}"
+    },
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "extraResources": [
+      {
+        "from": "../backend_dist/vendorcompare_backend",
+        "to": "backend_dist",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "../frontend/dist",
+        "to": "frontend_dist",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "seed.db",
+        "to": "seed.db"
+      }
+    ]
+  }
+}

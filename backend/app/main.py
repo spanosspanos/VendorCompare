@@ -9,10 +9,30 @@ Base.metadata.create_all(bind=engine)
 # Phase 012A migrations and seeds
 from .migrate_012a import up as migrate_012a_up
 from .migrate_012c import up as migrate_012c_up
+from .migrate_013b import up as migrate_013b_up
+from .migrate_013b2 import run as migrate_013b2_run
+from .migrate_014a import migrate as migrate_014a_run
+from .migrate_phase3 import run as migrate_phase3_run
+from .migrate_phase4 import run as migrate_phase4_run
+from .migrate_phase45 import run as migrate_phase45_run
+from .migrate_phase5 import run as migrate_phase5_run
+from .migrate_phase8 import run as migrate_phase8_run
+from .migrate_phase8b import run as migrate_phase8b_run
+from .migrate_019 import up as migrate_019_up
 from .seed_employees import seed_employees
 
 migrate_012a_up()
 migrate_012c_up()
+migrate_013b_up()
+migrate_013b2_run()
+migrate_014a_run()
+migrate_phase3_run()
+migrate_phase4_run()
+migrate_phase45_run()
+migrate_phase5_run()
+migrate_phase8_run()
+migrate_phase8b_run()
+migrate_019_up()
 
 _db = SessionLocal()
 try:

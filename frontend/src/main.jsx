@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
 import ReactDOM from 'react-dom/client'
-import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom'
+import { BrowserRouter, HashRouter, Routes, Route, Outlet } from 'react-router-dom'
 import { OrderProvider } from './context/OrderContext'
 import { TourContext } from './context/TourContext'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import TourGuide from './components/TourGuide'
 import PINGate from './components/PINGate'
+import ToSGate, { isTosAccepted } from './components/ToSGate'
 import Home from './pages/Home'
 import QuickOrder from './pages/QuickOrder'
 import OrderAssembly from './pages/OrderAssembly'
@@ -65,12 +66,28 @@ function App() {
   )
 }
 
+const isElectron = import.meta.env.MODE === 'electron'
+const Router = isElectron ? HashRouter : BrowserRouter
+const routerProps = isElectron ? {} : { basename: import.meta.env.BASE_URL }
+
+function Root() {
+  const [tosAccepted, setTosAccepted] = useState(isTosAccepted())
+
+  if (!tosAccepted) {
+    return <ToSGate onAccept={() => setTosAccepted(true)} />
+  }
+
+  return (
+    <AuthProvider>
+      <Router {...routerProps}>
+        <App />
+      </Router>
+    </AuthProvider>
+  )
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <AuthProvider>
-      <BrowserRouter basename={import.meta.env.BASE_URL}>
-        <App />
-      </BrowserRouter>
-    </AuthProvider>
+    <Root />
   </React.StrictMode>,
 )
