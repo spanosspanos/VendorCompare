@@ -3,11 +3,10 @@ import SombreroHome from './SombreroHome'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { useOrder } from '../context/OrderContext'
-import { useTour } from '../context/TourContext'
 import { useAuth } from '../context/AuthContext'
 import { getPendingReviewOrders, deleteOrder } from '../api'
 import CartModal from './CartModal'
-import { DEMO_MODE } from './TourGuide'
+import ManualDrawer from './ManualDrawer'
 import { countAssembledOrders } from '../utils/assembledOrders'
 
 export default function Header() {
@@ -19,20 +18,12 @@ export default function Header() {
   const navigate = useNavigate()
   const isHome = location.pathname === '/'
 
-  const { tourRunning, startTour: contextStartTour } = useTour()
   const [pendingOrders, setPendingOrders] = useState([])
   const [margOpen, setMargOpen] = useState(false)
   const [cartOpen, setCartOpen] = useState(false)
+  const [manualOpen, setManualOpen] = useState(false)
   const [loadingOrders, setLoadingOrders] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState(null) // order_id awaiting confirm
-  const [badgeDismissed, setBadgeDismissed] = useState(false)
-
-  const showBadge = DEMO_MODE && !tourRunning && !badgeDismissed
-
-  const startTour = () => {
-    setBadgeDismissed(true)
-    contextStartTour()
-  }
 
   const pendingCount = pendingOrders.length
 
@@ -103,22 +94,14 @@ export default function Header() {
 
   const rightIcons = (
     <div className="flex items-center gap-2">
-      {/* Bus icon — tour trigger */}
+      {/* Bus icon — Owner's Manual */}
       <button
         data-tour="bus-btn"
-        onClick={startTour}
+        onClick={() => setManualOpen(true)}
         className="relative p-2 flex items-center"
-        aria-label="Take a tour"
+        aria-label="Owner's Manual"
       >
         <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>🚌</span>
-        {showBadge && (
-          <span
-            className="tour-badge-pulse absolute -top-3 -right-3 bg-[#00C0C8] text-white font-bold rounded-full px-2.5 py-1.5 whitespace-nowrap shadow-lg"
-            style={{ fontFamily: "'Inter', sans-serif", fontSize: '0.72rem', letterSpacing: '0.02em', zIndex: 1 }}
-          >
-            Take A Tour!! 🚌
-          </span>
-        )}
       </button>
 
       {/* John's Glasses — admin only, not rendered at all for user sessions */}
@@ -304,6 +287,7 @@ export default function Header() {
       )}
 
       <CartModal isOpen={cartOpen} onClose={() => setCartOpen(false)} />
+      <ManualDrawer isOpen={manualOpen} onClose={() => setManualOpen(false)} />
     </>
   )
 }
