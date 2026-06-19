@@ -10,23 +10,22 @@ export default function ManualDrawer({ isOpen, onClose }) {
   }, [isOpen])
 
   const query = search.trim().toLowerCase()
+  const words = query ? query.split(/\s+/).filter(Boolean) : []
+  const textMatches = (text) => {
+    const lower = text.toLowerCase()
+    return words.every((word) => lower.includes(word))
+  }
 
   const matchingSubsections = (section) =>
     section.subsections.filter((sub) =>
-      !query ||
-      sub.title.toLowerCase().includes(query) ||
-      sub.body.toLowerCase().includes(query)
+      !query || textMatches(`${sub.title} ${sub.body}`)
     )
 
   const visibleSections = manualSections.filter(
     (section) =>
       !query ||
-      section.title.toLowerCase().includes(query) ||
-      section.subsections.some(
-        (sub) =>
-          sub.title.toLowerCase().includes(query) ||
-          sub.body.toLowerCase().includes(query)
-      )
+      textMatches(section.title) ||
+      matchingSubsections(section).length > 0
   )
 
   const toggleSection = (id) => {

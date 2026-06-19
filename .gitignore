@@ -39,11 +39,26 @@ env/
 *.env
 !.env.example
 !.env.production
+!.env.demo
+!.env.electron
 
 # SQLite / databases
 *.db
 *.sqlite
 *.sqlite3
+# seed DB is a build resource (extraResources), keep it
+!electron/seed.db
+
+# Build binaries / bundled runtimes / model blobs (reproducible, heavy)
+electron/resources/bin/
+electron/models/
+electron/checkpoints/
+backend_dist/
+build_pyinstaller/
+*.dmg
+*.zip
+*.bak
+*.bak.*
 
 # Alembic
 alembic/versions/*.pyc

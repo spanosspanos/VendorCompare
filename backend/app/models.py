@@ -200,3 +200,21 @@ class VendorArchiveItem(Base):
     unit = Column(String, nullable=True)
 
     document = relationship("VendorDocument", back_populates="archive_items")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    role = Column(String, nullable=False)  # "user" or "assistant"
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    location_id = Column(Integer, default=1, index=True)
+
+
+class Synonym(Base):
+    __tablename__ = "synonyms"
+    id = Column(Integer, primary_key=True, index=True)
+    alias = Column(String, nullable=False, index=True)   # what John said ("chick cut")
+    canonical = Column(String, nullable=False)            # canonical product name ("chicken cutlet")
+    location_id = Column(Integer, default=1, index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -146,7 +146,7 @@ export default function VaultTab({ onVendorUpdate }) {
       setPreviewModal(null)
       setArchiveDocs(prev => { const n = {...prev}; delete n[vendor_id]; return n })
       loadArchive(vendor_id)
-      await fetchVendors()
+      await fetchVendors(true)
     } catch {
       setConfirmMsg('Confirm failed.')
     } finally {
@@ -519,7 +519,7 @@ export default function VaultTab({ onVendorUpdate }) {
                   <div key={i} className="flex items-center justify-between text-xs">
                     <span className="text-[#F0EDE8] truncate flex-1 mr-2">{item.product_name}</span>
                     <span className="text-[#8A9099] line-through mr-1">{item.old_price ? `$${item.old_price.toFixed(2)}` : '—'}</span>
-                    <span className="text-[#3DAA6E]">→ ${item.new_price.toFixed(2)}</span>
+                    <span className="text-[#3DAA6E]">→ {item.new_price != null ? `$${item.new_price.toFixed(2)}` : '—'}</span>
                   </div>
                 ))}
                 {previewModal.preview_data.matched_items.length > 10 && (

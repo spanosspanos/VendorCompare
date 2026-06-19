@@ -95,4 +95,7 @@ export const deleteProductPermanent = (id) => api.delete(`/products/${id}`)
 export const loginUser = (pin) => api.post('/auth/login', { pin })
 export const getMe = (token) => api.get('/auth/me', { headers: { Authorization: `Bearer ${token}` } })
 
+export const sendChat = (messages, token) =>
+  api.post('/chat', { messages }, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+
 export default api

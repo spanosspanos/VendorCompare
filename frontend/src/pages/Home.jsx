@@ -1,4 +1,4 @@
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import PageHeader from '../components/PageHeader'
 import CartModal from '../components/CartModal'
@@ -10,6 +10,7 @@ import { countAssembledOrders } from '../utils/assembledOrders'
 
 export default function Home() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { selectedItems } = useOrder()
   const { role } = useAuth()
   const itemCount = Object.keys(selectedItems).length
@@ -84,8 +85,19 @@ export default function Home() {
     setDeleteConfirm(null)
   }
 
+  const isManualMode = location.pathname === '/manual'
+
   const rightContent = (
     <div className="flex items-center gap-2">
+      {/* Chat/Manual mode toggle */}
+      <button
+        onClick={() => navigate(isManualMode ? '/' : '/manual')}
+        className="px-2.5 py-1 rounded-lg border border-[#2A343C] text-xs font-semibold text-[#8A9099] hover:text-[#F0EDE8] hover:border-[#3A444C] transition-colors"
+        aria-label={isManualMode ? 'Switch to Chat Mode' : 'Switch to Manual Mode'}
+      >
+        {isManualMode ? 'Chat Mode' : 'Manual Mode'}
+      </button>
+
       {/* Bus icon — Owner's Manual */}
       <button
         data-tour="bus-btn"

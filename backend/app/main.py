@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .database import engine, Base, SessionLocal
-from .routers import categories, products, vendors, orders, prices, par_settings, prices_admin, auth, employees, vault, vendor_docs, recovery
+from .routers import categories, products, vendors, orders, prices, par_settings, prices_admin, auth, employees, vault, vendor_docs, recovery, chat, chat_history
 
 Base.metadata.create_all(bind=engine)
 
@@ -19,6 +19,7 @@ from .migrate_phase5 import run as migrate_phase5_run
 from .migrate_phase8 import run as migrate_phase8_run
 from .migrate_phase8b import run as migrate_phase8b_run
 from .migrate_019 import up as migrate_019_up
+from .migrate_taquito_v3 import run as migrate_taquito_v3_run
 from .seed_employees import seed_employees
 
 migrate_012a_up()
@@ -33,6 +34,7 @@ migrate_phase5_run()
 migrate_phase8_run()
 migrate_phase8b_run()
 migrate_019_up()
+migrate_taquito_v3_run()
 
 _db = SessionLocal()
 try:
@@ -62,6 +64,8 @@ app.include_router(recovery.router, prefix="/api/auth", tags=["recovery"])
 app.include_router(employees.router, prefix="/api/employees", tags=["employees"])
 app.include_router(vault.router)
 app.include_router(vendor_docs.router)
+app.include_router(chat.router)
+app.include_router(chat_history.router)
 
 
 @app.get("/api/health")

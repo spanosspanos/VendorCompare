@@ -60,20 +60,52 @@ def parse_food_direct_pdf(filepath):
     return items
 
 
+def _open_csv(filepath):
+    """Open a CSV trying utf-8-sig first, then latin-1 (covers Windows/cp1252 exports)."""
+    for enc in ('utf-8-sig', 'latin-1'):
+        try:
+            f = open(filepath, newline='', encoding=enc)
+            f.read(1024)
+            f.seek(0)
+            return f
+        except (UnicodeDecodeError, LookupError):
+            try:
+                f.close()
+            except Exception:
+                pass
+    return open(filepath, newline='', encoding='latin-1', errors='replace')
+
+
 def parse_csv_file(filepath):
     import csv
     items = []
-    with open(filepath, newline='', encoding='utf-8-sig') as f:
+    with _open_csv(filepath) as f:
         reader = csv.DictReader(f)
         for row in reader:
-            desc = row.get('description') or row.get('name') or row.get('item') or ''
-            price_str = row.get('price') or row.get('cost') or '0'
-            try:
-                price = float(str(price_str).replace('$', '').strip())
-            except ValueError:
-                price = None
-            sku = row.get('sku') or row.get('SKU') or None
-            unit = row.get('unit') or 'each'
+            # Normalize keys to lowercase for case-insensitive matching (handles US Foods, Food Direct, etc.)
+            lrow = {(k.lower().strip() if k else ''): v for k, v in row.items()}
+            desc = (lrow.get('product description') or lrow.get('description') or
+                    lrow.get('name') or lrow.get('item') or lrow.get('product') or '')
+            if isinstance(desc, str):
+                desc = desc.strip()
+            price_str = (lrow.get('price') or lrow.get('unit price') or lrow.get('cost') or
+                         lrow.get('your price') or lrow.get('contract price') or None)
+            price = None
+            if price_str:
+                try:
+                    price = float(str(price_str).replace('$', '').replace(',', '').strip())
+                    if price <= 0:
+                        price = None
+                except ValueError:
+                    price = None
+            sku = (lrow.get('product number') or lrow.get('sku') or lrow.get('item number') or
+                   lrow.get('product #') or None)
+            if sku:
+                sku = str(sku).strip()
+            unit = (lrow.get('product package size') or lrow.get('pack size') or
+                    lrow.get('unit') or lrow.get('uom') or 'each')
+            if isinstance(unit, str):
+                unit = unit.strip()
             if desc:
                 items.append({"sku": sku, "description": desc, "price": price, "unit": unit})
     return items
@@ -106,9 +138,80 @@ def parse_excel_file(filepath):
         return []
 
 
+def _detect_pdf_vendor(filepath):
+    """Scan up to 3 pages to distinguish US Foods from Food Direct PDFs."""
+    try:
+        with pdfplumber.open(filepath) as pdf:
+            for page in pdf.pages[:3]:
+                text = (page.extract_text() or '').lower()
+                if 'us foods' in text or 'usfoods' in text or 'moxe' in text:
+                    return 'usfoods'
+            # Secondary signal: any page has table structure typical of US Foods
+            # (header row containing "product description" and "product #")
+            for page in pdf.pages[:5]:
+                for table in (page.extract_tables() or []):
+                    for row in (table or [])[:3]:
+                        row_text = ' '.join(str(c).lower() for c in row if c)
+                        if 'product description' in row_text and ('product #' in row_text or 'product number' in row_text):
+                            return 'usfoods'
+    except Exception:
+        pass
+    return 'food_direct'
+
+
+def parse_usfoods_pdf(filepath):
+    items = []
+    with pdfplumber.open(filepath) as pdf:
+        for page in pdf.pages:
+            for table in (page.extract_tables() or []):
+                if not table or len(table) < 2:
+                    continue
+                header_row = None
+                data_start = 0
+                for i, row in enumerate(table):
+                    row_text = ' '.join(str(c).lower() for c in row if c)
+                    if 'product' in row_text and ('description' in row_text or '#' in row_text):
+                        header_row = [str(c).lower().strip() if c else '' for c in row]
+                        data_start = i + 1
+                        break
+                if not header_row:
+                    continue
+
+                def find_col(names):
+                    for name in names:
+                        for idx, h in enumerate(header_row):
+                            if name in h:
+                                return idx
+                    return None
+
+                desc_col = find_col(['product description', 'description'])
+                sku_col = find_col(['product #', 'product number', 'product#'])
+                unit_col = find_col(['pack size', 'unit'])
+                if desc_col is None:
+                    continue
+
+                for row in table[data_start:]:
+                    if not row or len(row) <= desc_col:
+                        continue
+                    desc = str(row[desc_col] or '').replace('\n', ' ').strip()
+                    if not desc:
+                        continue
+                    # Skip section header rows like "Chicken/Beef/Pork (10 products)"
+                    if 'products)' in desc.lower() or desc.lower() in ('product description',):
+                        continue
+                    sku = str(row[sku_col] or '').strip() if sku_col is not None and len(row) > sku_col else None
+                    unit = str(row[unit_col] or '').strip() if unit_col is not None and len(row) > unit_col else 'each'
+                    if desc and sku:
+                        items.append({"sku": sku, "description": desc, "price": None, "unit": unit or 'each'})
+    return items
+
+
 def parse_file(filepath, filename):
     lower = filename.lower()
     if lower.endswith('.pdf'):
+        vendor = _detect_pdf_vendor(filepath)
+        if vendor == 'usfoods':
+            return parse_usfoods_pdf(filepath)
         return parse_food_direct_pdf(filepath)
     elif lower.endswith('.csv'):
         return parse_csv_file(filepath)
@@ -122,6 +225,7 @@ def parse_file(filepath, filename):
 
 def normalize_text(text):
     text = text.lower()
+    text = re.sub(r'[,./()#]', ' ', text)
     replacements = {
         'bnls': 'boneless', 'chkn': 'chicken', 'sknls': 'skinless',
         'brst': 'breast', 'thgh': 'thigh', 'whl': 'whole',
@@ -142,7 +246,9 @@ def match_product(sku, description, products):
         name_tokens = set(norm_name.split())
         overlap = len(desc_tokens & name_tokens)
         if overlap > 0:
-            score = overlap / max(len(desc_tokens), len(name_tokens))
+            # Score against the shorter side: if every word of the product name
+            # appears in the (potentially verbose) vendor description, it's a match.
+            score = overlap / min(len(desc_tokens), len(name_tokens))
             if score > best_score and score >= 0.4:
                 best_score = score
                 best = p

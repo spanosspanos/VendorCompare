@@ -1,26 +1,51 @@
 {
   "name": "vendorcompare",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "VendorCompare Desktop",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "electron-builder --mac dmg"
+    "build": "npm run build:ai",
+    "build:ai": "electron-builder --config build-ai.json",
+    "build:mcp": "electron-builder --config build-mcp.json"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
   },
   "devDependencies": {
+    "dmg-license": "^1.0.11",
     "electron": "^29.0.0",
     "electron-builder": "^24.13.0"
   },
   "build": {
-    "appId": "com.flos.vendorcompare",
+    "appId": "com.vendorcompare.app",
     "productName": "VendorCompare",
+    "publish": {
+      "provider": "generic",
+      "url": "https://aitoolchest.space/vendorcompare/download/ai/"
+    },
     "mac": {
+      "icon": "resources/icon.icns",
       "category": "public.app-category.business",
-      "target": [{ "target": "dmg", "arch": ["arm64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64"]
+        }
+      ],
       "identity": null
     },
     "dmg": {
-      "title": "VendorCompare ${version}"
+      "title": "VendorCompare ${version}",
+      "contents": [
+        { "x": 180, "y": 170, "type": "file" },
+        { "x": 480, "y": 170, "type": "link", "path": "/Applications" },
+        { "x": 330, "y": 320, "type": "file", "path": "Install VendorCompare.command" }
+      ]
     },
     "files": [
       "main.js",
@@ -40,7 +65,15 @@
       {
         "from": "seed.db",
         "to": "seed.db"
+      },
+      {
+        "from": "resources/bin",
+        "to": "bin",
+        "filter": ["**/*"]
       }
+    ],
+    "extraFiles": [
+      { "from": "models", "to": "models", "filter": ["**/*"] }
     ]
   }
 }

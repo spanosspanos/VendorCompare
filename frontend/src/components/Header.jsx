@@ -92,8 +92,19 @@ export default function Header() {
     setDeleteConfirm(null)
   }
 
+  const isManualMode = location.pathname === '/manual'
+
   const rightIcons = (
     <div className="flex items-center gap-2">
+      {/* Chat / Manual mode toggle */}
+      <button
+        onClick={() => navigate(isManualMode ? '/' : '/manual')}
+        className="px-2.5 py-1 rounded-lg border border-[#2A343C] text-xs font-semibold text-[#8A9099] hover:text-[#F0EDE8] hover:border-[#3A444C] transition-colors"
+        aria-label={isManualMode ? 'Switch to Chat Mode' : 'Switch to Manual Mode'}
+      >
+        {isManualMode ? 'Chat Mode' : 'Manual Mode'}
+      </button>
+
       {/* Bus icon — Owner's Manual */}
       <button
         data-tour="bus-btn"

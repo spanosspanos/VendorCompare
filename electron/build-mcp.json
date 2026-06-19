@@ -1,0 +1,47 @@
+{
+  "appId": "com.vendorcompare.app.mcp",
+  "productName": "VendorCompare MCP",
+  "extraMetadata": {
+    "main": "main_mcp.js"
+  },
+  "publish": {
+    "provider": "generic",
+    "url": "https://aitoolchest.space/vendorcompare/download/mcp/"
+  },
+  "mac": {
+    "icon": "resources/icon_mcp.icns",
+    "category": "public.app-category.business",
+    "target": [
+      { "target": "dmg", "arch": ["arm64"] },
+      { "target": "zip", "arch": ["arm64"] }
+    ],
+    "identity": null
+  },
+  "dmg": {
+    "title": "VendorCompare MCP ${version}",
+    "contents": [
+      { "x": 180, "y": 170, "type": "file" },
+      { "x": 480, "y": 170, "type": "link", "path": "/Applications" },
+      { "x": 330, "y": 320, "type": "file", "path": "Install VendorCompare.command" }
+    ]
+  },
+  "files": [
+    "main_mcp.js",
+    "preload.js"
+  ],
+  "extraResources": [
+    {
+      "from": "../backend_dist/vendorcompare_backend",
+      "to": "backend_dist/vendorcompare_backend"
+    },
+    {
+      "from": "../frontend/dist",
+      "to": "frontend_dist",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "seed.db",
+      "to": "seed.db"
+    }
+  ]
+}

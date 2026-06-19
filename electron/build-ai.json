@@ -1,0 +1,52 @@
+{
+  "appId": "com.vendorcompare.app.ai",
+  "productName": "VendorCompare AI",
+  "publish": {
+    "provider": "generic",
+    "url": "https://aitoolchest.space/vendorcompare/download/ai/"
+  },
+  "mac": {
+    "icon": "resources/icon_ai.icns",
+    "category": "public.app-category.business",
+    "target": [
+      { "target": "dmg", "arch": ["arm64"] },
+      { "target": "zip", "arch": ["arm64"] }
+    ],
+    "identity": null
+  },
+  "dmg": {
+    "title": "VendorCompare AI ${version}",
+    "contents": [
+      { "x": 180, "y": 170, "type": "file" },
+      { "x": 480, "y": 170, "type": "link", "path": "/Applications" },
+      { "x": 330, "y": 320, "type": "file", "path": "Install VendorCompare AI.command" }
+    ]
+  },
+  "files": [
+    "main.js",
+    "preload.js"
+  ],
+  "extraResources": [
+    {
+      "from": "../backend_dist/vendorcompare_backend",
+      "to": "backend_dist/vendorcompare_backend"
+    },
+    {
+      "from": "../frontend/dist",
+      "to": "frontend_dist",
+      "filter": ["**/*"]
+    },
+    {
+      "from": "seed.db",
+      "to": "seed.db"
+    },
+    {
+      "from": "resources/bin",
+      "to": "bin",
+      "filter": ["**/*"]
+    }
+  ],
+  "extraFiles": [
+    { "from": "models", "to": "models", "filter": ["**/*"] }
+  ]
+}
