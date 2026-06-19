@@ -169,6 +169,16 @@ echo "      DMG build complete: $ELECTRON_DIR/dist"
 echo ""
 
 echo "=== Step 5 — Upload to AI Edition endpoint ==="
+# PUBLISH guard (Dev SOP: separate build from deploy). Default PUBLISH=1 preserves
+# original behavior. Set PUBLISH=0 to build only and skip the production upload —
+# lets the launch + one-real-query staging gate (R4) run before anything ships.
+if [ "${PUBLISH:-1}" != "1" ]; then
+  echo "      PUBLISH=${PUBLISH:-1} — build-only; skipping production upload."
+  echo "      DMG left in: $ELECTRON_DIR/dist"
+  echo ""
+  echo "=== VendorCompare AI Edition build complete (build-only, NOT published) ==="
+  exit 0
+fi
 DMG_PATH=$(find "$ELECTRON_DIR/dist" \( -name "VendorCompare-AI*.dmg" -o -name "VendorCompare-*.dmg" \) -type f | grep -v blockmap | head -1)
 if [ -z "$DMG_PATH" ]; then
   echo "ERROR: No VendorCompare DMG found in $ELECTRON_DIR/dist"
