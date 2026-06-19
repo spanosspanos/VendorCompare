@@ -54,7 +54,7 @@
     "extraResources": [
       {
         "from": "../backend_dist/vendorcompare_backend",
-        "to": "backend_dist",
+        "to": "backend_dist/vendorcompare_backend",
         "filter": ["**/*"]
       },
       {
