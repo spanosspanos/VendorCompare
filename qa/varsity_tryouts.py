@@ -69,11 +69,26 @@ def record(drill, status, detail=""):
 def load_ground_truth():
     gt = {}
     _, gt["vendors"] = get("/api/vendors")
-    _, gt["products"] = get("/api/products")
+    _, raw_products = get("/api/products")
+    gt["products"] = _flatten_products(raw_products)
     _, gt["prices"] = get("/api/prices")
     _, gt["par"] = get("/api/par-settings/")
     _, gt["categories"] = get("/api/categories")
     return gt
+
+def _flatten_products(raw):
+    """/api/products returns categories with a nested `products` array. Flatten to
+    a flat list of real product dicts. Tolerate an already-flat product list."""
+    out = []
+    if isinstance(raw, list):
+        for row in raw:
+            if not isinstance(row, dict):
+                continue
+            if isinstance(row.get("products"), list):
+                out.extend(p for p in row["products"] if isinstance(p, dict))
+            elif "category_id" in row:
+                out.append(row)
+    return out
 
 def _vendor_names(gt):
     return {v.get("name") for v in gt["vendors"] if isinstance(v, dict)}
@@ -248,14 +263,18 @@ def drill_order_lifecycle(token, gt):
     _, before = get("/api/orders/pending-review")
     before_ids = {o.get("id") or o.get("order_id") for o in (before or [])} if isinstance(before, list) else set()
 
-    # pick a real priced product name to order
-    latest = _latest_prices_by_product(gt)
-    priced_pids = [p for p, vm in latest.items() if vm]
+    # pick a real, orderable product that US Foods prices, so the targeted order
+    # can actually land. Price rows carry product_name + vendor_name directly.
     pname = None
-    for p in gt["products"]:
-        if isinstance(p, dict) and p.get("id") in priced_pids:
-            pname = p.get("name")
+    for row in gt["prices"]:
+        if row.get("vendor_name") == "US Foods" and row.get("product_name"):
+            pname = row["product_name"]
             break
+    if not pname:  # fallback: any priced product
+        for row in gt["prices"]:
+            if row.get("product_name"):
+                pname = row["product_name"]
+                break
     if not pname:
         record("MUT-1 order place→review→cleanup", "SKIP", "no priced product to order")
         return
