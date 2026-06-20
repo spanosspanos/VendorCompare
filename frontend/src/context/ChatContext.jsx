@@ -28,17 +28,18 @@ export function ChatProvider({ children }) {
       .catch(() => {})
   }, [])
 
-  // Last assembled order data
+  // Last assembled order data + draft token
   const [orderData, setOrderData] = useState(null)
+  const [draftId, setDraftId] = useState(null)
 
-  const addMessage = (role, content, order_data = null, isError = false) => {
-    const message = { role, content, order_data, isError }
+  const addMessage = (role, content, order_data = null, isError = false, confirmation_receipt = null) => {
+    const message = { role, content, order_data, isError, confirmation_receipt }
 
     // Add to conversation history (without UI metadata)
     if (role !== 'assistant' || !isError) {
       setConversationHistory(prev => [
         ...prev,
-        { role, content }
+        { role, content, draft_id: draftId }
       ])
     }
 
@@ -48,6 +49,10 @@ export function ChatProvider({ children }) {
     // Track orderData if present
     if (order_data) {
       setOrderData(order_data)
+      if (order_data.draft_id) setDraftId(order_data.draft_id)
+    }
+    if (confirmation_receipt) {
+      setDraftId(null)
     }
   }
 
@@ -57,6 +62,7 @@ export function ChatProvider({ children }) {
       { role: 'assistant', content: GREETING, order_data: null }
     ])
     setOrderData(null)
+    setDraftId(null)
   }
 
   const getConversationHistory = () => conversationHistory
@@ -66,11 +72,13 @@ export function ChatProvider({ children }) {
       conversationHistory,
       displayMessages,
       orderData,
+      draftId,
       addMessage,
       clearMessages,
       setConversationHistory,
       setDisplayMessages,
       setOrderData,
+      setDraftId,
       getConversationHistory,
     }}>
       {children}

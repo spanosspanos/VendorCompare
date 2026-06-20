@@ -14,6 +14,7 @@ export default function ChatPage() {
     displayMessages,
     setDisplayMessages,
     addMessage,
+    draftId,
   } = useChat()
   const navigate = useNavigate()
   const location = useLocation()
@@ -42,11 +43,11 @@ export default function ChatPage() {
     setLoading(true)
 
     try {
-      const res = await sendChat(newHistory, token)
-      const { reply, order_data } = res.data
+      const res = await sendChat(newHistory, token, draftId)
+      const { reply, order_data, confirmation_receipt } = res.data
       const assistantMessage = { role: 'assistant', content: reply }
       setConversationHistory(prev => [...prev, assistantMessage])
-      addMessage('assistant', reply, order_data || null)
+      addMessage('assistant', reply, order_data || null, false, confirmation_receipt || null)
     } catch (err) {
       const errMsg = err.response?.data?.detail || 'Something went wrong. Please try again.'
       setError(errMsg)
@@ -96,6 +97,25 @@ export default function ChatPage() {
             >
               {msg.content}
             </div>
+
+            {/* Verified receipt rendered verbatim when save_order readback passes */}
+            {msg.role === 'assistant' && msg.confirmation_receipt && (
+              <div className="mt-2 w-full max-w-sm bg-emerald-950/30 border border-emerald-700/50 rounded-2xl px-4 py-3 text-sm text-emerald-100">
+                <div className="font-bold text-emerald-300 mb-2">Order #{msg.confirmation_receipt.order_id} saved</div>
+                <div>Status: {msg.confirmation_receipt.status} / {msg.confirmation_receipt.review_status}</div>
+                <div>Total: ${msg.confirmation_receipt.total_cost.toFixed(2)} · Items: {msg.confirmation_receipt.item_count}</div>
+                <div>Savings vs worst: ${msg.confirmation_receipt.savings_vs_worst.toFixed(2)}</div>
+                <div className="mt-2 space-y-1">
+                  {msg.confirmation_receipt.vendor_splits.map((split, i) => (
+                    <div key={i} className="flex justify-between gap-3">
+                      <span>{split.vendor}</span>
+                      <span>${split.total.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 text-xs text-emerald-200/70">{msg.confirmation_receipt.created_at}</div>
+              </div>
+            )}
 
             {/* OrderConfirmCard rendered below assistant message when order_data present */}
             {msg.role === 'assistant' && msg.order_data && (

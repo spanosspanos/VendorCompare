@@ -127,6 +127,24 @@ class OrderVendorSplit(Base):
     vendor = relationship("Vendor")
 
 
+class OrderDraft(Base):
+    __tablename__ = "order_drafts"
+
+    id = Column(String, primary_key=True, index=True)
+    location_id = Column(Integer, ForeignKey("locations.id"), nullable=False, default=1)
+    payload_json = Column(Text, nullable=False)
+    total_cost = Column(Float, nullable=False, default=0.0)
+    savings_vs_worst = Column(Float, nullable=False, default=0.0)
+    item_count = Column(Integer, nullable=False, default=0)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    consumed_at = Column(DateTime, nullable=True)
+    consumed_order_id = Column(Integer, ForeignKey("orders.id"), nullable=True)
+
+    location = relationship("Location")
+    consumed_order = relationship("Order")
+
+
 class AuditLog(Base):
     __tablename__ = "audit_log"
 

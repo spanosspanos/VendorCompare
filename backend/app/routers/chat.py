@@ -4,6 +4,7 @@ Uses Ollama via the OpenAI-compatible API (no API key required).
 """
 import os
 import json
+import uuid
 import logging
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -20,7 +21,7 @@ from ..database import get_db
 from ..auth_deps import get_current_role
 from ..models import (
     Price, Product, Category, Vendor, Order, OrderItem, OrderVendorSplit,
-    ParSetting, AuditLog, ChatMessage as ChatMessageModel, Synonym,
+    OrderDraft, ParSetting, AuditLog, ChatMessage as ChatMessageModel, Synonym,
 )
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -37,9 +38,9 @@ You are talking to John, the owner and GM. John collects order quantities from h
 YOUR WORLD IS VENDORCOMPARE. If a question cannot be associated with or executed within VendorCompare (vendors, products, prices, order assembly, PAR levels), do not attempt to answer it. Say: "That's outside VendorCompare — I'm just here for the ordering side. What can I help you with on that front?"
 
 VENDORS:
-- Sysco (primary) — reliable pricing
+- Food Direct (primary) — reliable pricing
 - US Foods (primary) — reliable pricing
-- Riviera — active but pricing is often sparse; surface uncertainty if Riviera data is missing or stale
+- Riviera Produce — active but pricing is often sparse; surface uncertainty if Riviera Produce data is missing or stale
 
 PRICE STALENESS: If a price is unavailable or older than 14 days, tell John clearly and continue with what's available. Never silently use stale pricing. Never make up prices.
 
@@ -49,7 +50,7 @@ WHEN SEARCH RETURNS NOTHING OR MULTIPLE AMBIGUOUS MATCHES: Ask before guessing.
 - Multiple matches (e.g. both "5 Inch Flour Tortillas" and "12 Inch Flour Tortillas"): list ALL matches by name and ask which one(s) John wants. Never silently pick one.
 
 HARD LIMITS:
-- VendorCompare does not place orders with vendors. After saving, John places the order with Sysco/US Foods/Riviera through his normal channels. Never imply Taquito can transmit a vendor order.
+- VendorCompare does not place orders with vendors. After saving, John places the order with Food Direct/US Foods/Riviera Produce through his normal channels. Never imply Taquito can transmit a vendor order.
 - Assembled orders are not saved until John confirms. If the session might be interrupted, remind John to save.
 
 NOTES — two levels, do not conflate:
@@ -65,11 +66,12 @@ If intent is unclear: "Are you placing a specific order, or want me to pull up t
 ORDER RULES:
 - ALWAYS present vendor splits and total before saving.
 - NEVER save without explicit confirmation ("yes", "confirm", "save it", "looks good", etc.).
-- After saving: "Order saved. It's in the review queue."
+- On confirmation, call save_order(draft_id, origin_route="chat") using the draft_id from the assembled order. Do not write your own saved confirmation; the app renders the verified receipt.
 """
 
 
 def _load_system_prompt() -> str:
+    prompt = _FALLBACK_SYSTEM_PROMPT
     try:
         if _CANOPI_SKILL_PATH.exists():
             raw = _CANOPI_SKILL_PATH.read_text()
@@ -78,10 +80,12 @@ def _load_system_prompt() -> str:
             if idx != -1:
                 extracted = raw[idx + len(marker):].strip()
                 if extracted:
-                    return extracted
+                    prompt = extracted
     except Exception as e:
         logging.warning(f"Taquito skill load failed: {e} — using fallback prompt.")
-    return _FALLBACK_SYSTEM_PROMPT
+    prompt = prompt.replace('After saving: "Order saved. It\'s in the review queue."', 'On confirmation, call save_order(draft_id, origin_route="chat") using the draft_id from the assembled order. Do not write your own saved confirmation; the app renders the verified receipt.')
+    prompt = prompt.replace("After saving: \"Order saved. It's in the review queue.\"", 'On confirmation, call save_order(draft_id, origin_route="chat") using the draft_id from the assembled order. Do not write your own saved confirmation; the app renders the verified receipt.')
+    return prompt
 
 
 SYSTEM_PROMPT = _load_system_prompt()
@@ -119,7 +123,7 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "assemble_order",
-            "description": "Assemble an order: finds cheapest vendor for each item (respecting locks, excluding muted vendors), returns vendor splits, total cost, and savings. Returns assembled order data. Call this once you have all product IDs and quantities.",
+            "description": "Assemble an order: finds cheapest vendor for each item (respecting locks, excluding muted vendors), returns vendor splits, total cost, savings, and a draft_id token. Call this once you have all product IDs and quantities. Keep the draft_id for save_order.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -143,24 +147,14 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "save_order",
-            "description": "Save the assembled order to the database for manager review. ONLY call after the user explicitly confirms. Returns the saved order ID.",
+            "description": "Save a previously assembled draft to the database for manager review. ONLY call after the user explicitly confirms. Pass the draft_id returned by assemble_order; do not pass/recreate item lists. Returns a verified ConfirmationReceipt only after DB readback succeeds.",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "items": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "product_id": {"type": "integer"},
-                                "quantity": {"type": "number"}
-                            },
-                            "required": ["product_id", "quantity"]
-                        }
-                    },
+                    "draft_id": {"type": "string", "description": "draft_id returned by assemble_order"},
                     "origin_route": {"type": "string", "description": "Always pass 'chat'"}
                 },
-                "required": ["items", "origin_route"]
+                "required": ["draft_id", "origin_route"]
             }
         }
     },
@@ -592,7 +586,7 @@ def _get_catalog_context(db: Session) -> str | None:
             return None
         cat_ids = {p.category_id for p in products}
         cats = {c.id: c.name for c in db.query(Category).filter(Category.id.in_(cat_ids)).all()}
-        vendors = db.query(Vendor).filter(Vendor.muted == False).all()
+        vendors = db.query(Vendor).filter(Vendor.is_muted == False, Vendor.is_deleted == False).all()
 
         lines = ["JOHN'S PRODUCT CATALOG — use these exact IDs when calling tools:"]
         current_cat = None
@@ -649,10 +643,12 @@ def _get_session_context(db: Session) -> str | None:
 class ChatMessage(BaseModel):
     role: str
     content: str
+    draft_id: str | None = None
 
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage]
+    draft_id: str | None = None
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -662,6 +658,15 @@ def _period_cutoff(period: str) -> datetime | None:
     mapping = {"week": 7, "month": 30, "quarter": 90, "year": 365}
     days = mapping.get(period)
     return now - timedelta(days=days) if days else None
+
+
+def _latest_draft_id(request: ChatRequest) -> str | None:
+    if request.draft_id:
+        return request.draft_id
+    for message in reversed(request.messages):
+        if message.draft_id:
+            return message.draft_id
+    return None
 
 
 # ── Tool implementations ──────────────────────────────────────────────────────
@@ -724,7 +729,7 @@ def _muted_vendor_ids(db: Session) -> set[int]:
     return {v.id for v in db.query(Vendor).filter(Vendor.is_muted == True).all()}
 
 
-def _tool_assemble_order(items: list, db: Session) -> dict:
+def _assemble_order_payload(items: list, db: Session) -> dict:
     all_vendors = db.query(Vendor).filter(Vendor.is_deleted == False).all()
     vendor_map = {v.id: v.name for v in all_vendors}
     muted_ids = _muted_vendor_ids(db)
@@ -762,7 +767,6 @@ def _tool_assemble_order(items: list, db: Session) -> dict:
             .all()
         )
 
-        # Exclude muted vendors
         active_prices = [p for p in prices if p.vendor_id not in muted_ids]
         if not active_prices:
             unpriced_items.append({"product_id": product_id, "product_name": product.name})
@@ -771,7 +775,6 @@ def _tool_assemble_order(items: list, db: Session) -> dict:
         for p in active_prices:
             vendor_hypothetical[p.vendor_id].append(round(p.price * quantity, 2))
 
-        # Respect vendor lock (skip if locked vendor is muted)
         par_setting = (
             db.query(ParSetting)
             .filter(ParSetting.product_id == product_id, ParSetting.location_id == 1)
@@ -820,35 +823,105 @@ def _tool_assemble_order(items: list, db: Session) -> dict:
     }
 
 
-def _tool_save_order(items: list, origin_route: str, db: Session) -> dict:
-    assembled = _tool_assemble_order(items, db)
-    order = Order(
+def _draft_item_count(payload: dict) -> int:
+    return sum(len(vo.get("items", [])) for vo in payload.get("vendor_orders", []))
+
+
+def _tool_assemble_order(items: list, db: Session) -> dict:
+    payload = _assemble_order_payload(items, db)
+    draft_id = uuid.uuid4().hex
+    draft = OrderDraft(
+        id=draft_id,
         location_id=1,
-        total_cost=assembled["total_cost"],
-        savings_vs_worst=assembled["savings_vs_worst"],
+        payload_json=json.dumps(payload),
+        total_cost=payload["total_cost"],
+        savings_vs_worst=payload["savings_vs_worst"],
+        item_count=_draft_item_count(payload),
+        expires_at=datetime.now(timezone.utc) + timedelta(hours=24),
+    )
+    db.add(draft)
+    db.commit()
+    payload["draft_id"] = draft_id
+    return payload
+
+
+def _confirmation_receipt(order: Order, item_count: int) -> dict:
+    return {
+        "order_id": int(order.id),
+        "status": order.status,
+        "review_status": order.review_status,
+        "created_at": order.created_at.isoformat() if order.created_at else datetime.now(timezone.utc).isoformat(),
+        "total_cost": float(order.total_cost),
+        "savings_vs_worst": float(order.savings_vs_worst),
+        "item_count": int(item_count),
+        "vendor_splits": [
+            {"vendor": split.vendor.name if split.vendor else f"Vendor #{split.vendor_id}", "total": float(split.total)}
+            for split in order.vendor_splits
+        ],
+    }
+
+
+def _readback_confirmation(order_id: int, expected_total: float, expected_item_count: int, db: Session) -> dict | None:
+    order = db.query(Order).filter(Order.id == order_id).first()
+    if not order:
+        return None
+    item_count = db.query(func.count(OrderItem.id)).filter(OrderItem.order_id == order.id).scalar() or 0
+    if round(float(order.total_cost), 2) != round(float(expected_total), 2):
+        return None
+    if int(item_count) != int(expected_item_count):
+        return None
+    return _confirmation_receipt(order, int(item_count))
+
+
+def _tool_save_order(draft_id: str, origin_route: str, db: Session) -> dict:
+    draft = db.query(OrderDraft).filter(OrderDraft.id == draft_id).first()
+    now = datetime.now(timezone.utc)
+    if not draft:
+        return {"status": "not_saved", "error": "Draft not found. Please assemble the order again."}
+    expires_at = draft.expires_at
+    if expires_at and expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if draft.consumed_at is not None:
+        return {"status": "not_saved", "error": "This draft was already saved. No duplicate order was created."}
+    if expires_at and expires_at < now:
+        return {"status": "not_saved", "error": "This draft expired. Please assemble the order again."}
+
+    assembled = json.loads(draft.payload_json)
+    expected_item_count = int(draft.item_count)
+    order = Order(
+        location_id=draft.location_id,
+        total_cost=draft.total_cost,
+        savings_vs_worst=draft.savings_vs_worst,
         status="saved",
         requires_review=True,
         review_status="pending",
         taco_flag_count=0,
+        comparison_json=json.dumps({"source": "chat_draft", "draft_id": draft.id}),
         origin_route=origin_route or "chat",
         employee_name=None,
     )
     db.add(order)
     db.flush()
-    for vo in assembled["vendor_orders"]:
-        for li in vo["items"]:
+    for vo in assembled.get("vendor_orders", []):
+        for li in vo.get("items", []):
             db.add(OrderItem(
                 order_id=order.id,
                 product_id=li["product_id"],
-                quantity=li["quantity"],
+                quantity=int(float(li["quantity"])),
                 selected_vendor_id=li["selected_vendor_id"],
                 unit_price=li["unit_price"],
                 line_total=li["line_total"],
             ))
         db.add(OrderVendorSplit(order_id=order.id, vendor_id=vo["vendor_id"], total=vo["subtotal"]))
+    db.flush()
+    draft.consumed_at = now
+    draft.consumed_order_id = order.id
     db.commit()
-    db.refresh(order)
-    return {"order_id": order.id, "status": "saved"}
+
+    receipt = _readback_confirmation(order.id, draft.total_cost, expected_item_count, db)
+    if not receipt:
+        return {"status": "not_saved", "error": "Order write could not be verified. Please retry.", "order_id": order.id}
+    return {"status": "saved", "confirmation_receipt": receipt}
 
 
 def _tool_get_par_order(db: Session) -> dict:
@@ -1262,7 +1335,7 @@ def execute_tool(tool_name: str, tool_input: dict, db: Session) -> Any:
     elif tool_name == "assemble_order":
         return _tool_assemble_order(tool_input["items"], db)
     elif tool_name == "save_order":
-        return _tool_save_order(tool_input["items"], tool_input.get("origin_route", "chat"), db)
+        return _tool_save_order(tool_input["draft_id"], tool_input.get("origin_route", "chat"), db)
     elif tool_name == "get_par_order":
         return _tool_get_par_order(db)
     elif tool_name == "get_vendors":
@@ -1348,9 +1421,14 @@ async def chat(
         if ctx:
             messages.append({"role": "system", "content": ctx})
 
+    draft_id = _latest_draft_id(request)
+    if draft_id:
+        messages.append({"role": "system", "content": f"Current assembled order draft_id: {draft_id}. If John confirms/saves this order, call save_order with exactly this draft_id."})
+
     messages += [{"role": m.role, "content": m.content} for m in request.messages]
 
     order_data = None
+    confirmation_receipt = None
     max_iterations = 10
     for _ in range(max_iterations):
         active_tools = select_tools(messages)
@@ -1385,6 +1463,8 @@ async def chat(
                 result = execute_tool(tc.function.name, tool_input, db)
                 if tc.function.name == "assemble_order":
                     assembled_order = result
+                if tc.function.name == "save_order" and result.get("confirmation_receipt"):
+                    confirmation_receipt = result["confirmation_receipt"]
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
@@ -1407,9 +1487,12 @@ async def chat(
             except Exception:
                 db.rollback()
 
-            return {"reply": reply_text, "order_data": order_data}
+            if confirmation_receipt:
+                reply_text = "Order saved. It's in the review queue."
+
+            return {"reply": reply_text, "order_data": order_data, "confirmation_receipt": confirmation_receipt}
 
         else:
             break
 
-    return {"reply": "I'm having trouble processing that. Please try again.", "order_data": None}
+    return {"reply": "I'm having trouble processing that. Please try again.", "order_data": None, "confirmation_receipt": None}

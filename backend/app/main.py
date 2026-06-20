@@ -20,6 +20,7 @@ from .migrate_phase8 import run as migrate_phase8_run
 from .migrate_phase8b import run as migrate_phase8b_run
 from .migrate_019 import up as migrate_019_up
 from .migrate_taquito_v3 import run as migrate_taquito_v3_run
+from .migrate_order_drafts import run as migrate_order_drafts_run
 from .seed_employees import seed_employees
 
 migrate_012a_up()
@@ -35,6 +36,7 @@ migrate_phase8_run()
 migrate_phase8b_run()
 migrate_019_up()
 migrate_taquito_v3_run()
+migrate_order_drafts_run()
 
 _db = SessionLocal()
 try:
