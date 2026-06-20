@@ -1,9 +1,10 @@
 """Auth dependencies for FastAPI route protection"""
-import os
 from fastapi import Header, HTTPException, status
 from jose import jwt, JWTError
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-prod")
+from .security import get_secret_key
+
+SECRET_KEY = get_secret_key()
 ALGORITHM = "HS256"
 
 

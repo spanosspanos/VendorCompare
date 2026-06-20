@@ -6,6 +6,7 @@ const { spawn } = require('child_process')
 const path = require('path')
 const http = require('http')
 const fs = require('fs')
+const crypto = require('crypto')
 
 const LOG_FILE = path.join(require('os').homedir(), 'Library', 'Logs', 'VendorCompare AI', 'startup.log')
 function log(msg) {
@@ -36,6 +37,18 @@ function getDataDir() {
   const dir = app.getPath('userData')
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
   return dir
+}
+
+function ensureInstallSecret() {
+  const secretPath = path.join(getDataDir(), 'backend.secret')
+  if (fs.existsSync(secretPath)) {
+    const existing = fs.readFileSync(secretPath, 'utf8').trim()
+    if (existing) return existing
+  }
+  const secret = crypto.randomBytes(32).toString('hex')
+  fs.writeFileSync(secretPath, secret, { mode: 0o600 })
+  log(`First run: generated per-install backend secret at ${secretPath}`)
+  return secret
 }
 
 function ensureDatabase() {
@@ -254,6 +267,8 @@ function spawnBackend() {
   const env = {
     ...process.env,
     DATABASE_URL: `sqlite:///${dbPath}`,
+    SECRET_KEY: process.env.SECRET_KEY || ensureInstallSecret(),
+    VENDORCOMPARE_ENV: app.isPackaged ? 'production' : (process.env.VENDORCOMPARE_ENV || 'development'),
     // Override Ollama URL to use our bundled sidecar on port 11435
     OLLAMA_BASE_URL: `http://localhost:${OLLAMA_PORT}/v1`,
     VENDORCOMPARE_MODEL: OLLAMA_MODEL,

@@ -1,7 +1,6 @@
 import csv
 import io
 import json as json_lib
-import os
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, Header, HTTPException
 from fastapi.responses import StreamingResponse
@@ -12,8 +11,9 @@ from jose import jwt, JWTError
 from ..database import get_db
 from ..models import Price, Product, Vendor, Order, OrderItem, OrderVendorSplit, ParSetting
 from ..auth_deps import get_current_role, require_admin
+from ..security import get_secret_key
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-prod")
+SECRET_KEY = get_secret_key()
 ALGORITHM = "HS256"
 
 

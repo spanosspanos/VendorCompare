@@ -17,10 +17,11 @@ from jose import jwt, JWTError
 from ..database import get_db
 from ..models import Vendor, VendorDocument, VendorArchiveItem, Product, Price
 from ..auth_deps import get_current_role, require_admin
+from ..security import get_secret_key
 
 router = APIRouter(prefix="/api/vendor-docs", tags=["vendor-docs"])
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-change-in-prod")
+SECRET_KEY = get_secret_key()
 ALGORITHM = "HS256"
 
 # In-memory preview storage: preview_id -> list of parsed items + matched results
