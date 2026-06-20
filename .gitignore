@@ -94,3 +94,6 @@ htmlcov/
 # Docker
 .docker/
 .dmux/
+
+# Electron-bundled Python venv (415MB build artifact, never commit)
+.venv_electron/
