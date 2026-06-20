@@ -15,6 +15,9 @@ Config (env):
   VC_TEST_PIN   PIN for login. If unset, chat drills are SKIPPED (deterministic
                 half still runs). Never pass the PIN on the command line.
   VC_LOCATION   default 1
+  VC_PROBE_SAVE N>0 runs ONLY the save-rate frequency probe (Finding #1-B):
+                login once, run N assemble→save→verify→cleanup loops, report the
+                persist rate. Auto-cleans every order that lands.
 
 Exit code 0 if no drill FAILED (skips/warns allowed), 1 otherwise.
 """
@@ -28,6 +31,7 @@ import urllib.error
 BASE = os.environ.get("VC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
 PIN = os.environ.get("VC_TEST_PIN")
 LOCATION = int(os.environ.get("VC_LOCATION", "1"))
+PROBE_SAVE = int(os.environ.get("VC_PROBE_SAVE", "0"))  # >0 = run save-rate probe only
 
 # ── tiny HTTP layer (stdlib only) ───────────────────────────────────────────────
 
@@ -256,28 +260,68 @@ def drill_chat(token, gt):
            "PASS" if deflected else "WARN",
            "stayed in role" if deflected else f"did not clearly deflect: {reply[:80]!r}")
 
+def _pick_orderable_product(gt):
+    """A real, orderable product that US Foods prices, so a targeted order can land.
+    Price rows carry product_name + vendor_name directly."""
+    for row in gt["prices"]:
+        if row.get("vendor_name") == "US Foods" and row.get("product_name"):
+            return row["product_name"]
+    for row in gt["prices"]:  # fallback: any priced product
+        if row.get("product_name"):
+            return row["product_name"]
+    return None
+
+def _orders_snapshot(token):
+    _, rows = get("/api/orders/", token=token)
+    return {o.get("id") for o in (rows or [])} if isinstance(rows, list) else set()
+
+def _place_and_save(token, pname):
+    """One multi-turn assemble→confirm. Returns (reply2, new_order_ids)."""
+    before = _orders_snapshot(token)
+    hist = []
+    _, reply, _, _ = ask(token, f"Order 2 cases of {pname} from US Foods")
+    hist += [{"role": "user", "content": f"Order 2 cases of {pname} from US Foods"},
+             {"role": "assistant", "content": reply}]
+    _, reply2, _, _ = ask(token, "Yes, save it.", history=hist)
+    new_ids = _orders_snapshot(token) - before
+    return reply2, new_ids
+
+def _cleanup(token, ids):
+    out = []
+    for oid in ids:
+        st, _ = _req("DELETE", f"/api/orders/{oid}", token=token)
+        out.append((oid, st))
+    return out
+
+def drill_save_frequency(token, gt, n):
+    """PROBE: quantify how often the multi-turn save actually persists. Auto-cleans
+    every order that lands. Reports the persist rate (Finding #1-B)."""
+    pname = _pick_orderable_product(gt)
+    if not pname:
+        record(f"PROBE save-rate x{n}", "SKIP", "no priced product to order")
+        return
+    saved = 0
+    for i in range(n):
+        reply2, new_ids = _place_and_save(token, pname)
+        if new_ids:
+            saved += 1
+            _cleanup(token, new_ids)
+        tag = f"SAVED {sorted(new_ids)}" if new_ids else "NO SAVE"
+        print(f"    iter {i+1}/{n}: {tag:18} — said: {reply2[:56]!r}")
+    pct = round(100 * saved / n)
+    status = "PASS" if saved == n else ("FAIL" if saved == 0 else "WARN")
+    record(f"PROBE save-rate x{n}", status,
+           f"{saved}/{n} persisted ({pct}%); all test orders cleaned up")
+
 def drill_order_lifecycle(token, gt):
     """MUTATING + auto-cleanup: place a real order via chat, verify it lands in
     the review queue, then delete it. Leaves the DB as found."""
-    # snapshot pending order ids
-    _, before = get("/api/orders/pending-review")
-    before_ids = {o.get("id") or o.get("order_id") for o in (before or [])} if isinstance(before, list) else set()
-
-    # pick a real, orderable product that US Foods prices, so the targeted order
-    # can actually land. Price rows carry product_name + vendor_name directly.
-    pname = None
-    for row in gt["prices"]:
-        if row.get("vendor_name") == "US Foods" and row.get("product_name"):
-            pname = row["product_name"]
-            break
-    if not pname:  # fallback: any priced product
-        for row in gt["prices"]:
-            if row.get("product_name"):
-                pname = row["product_name"]
-                break
+    pname = _pick_orderable_product(gt)
     if not pname:
         record("MUT-1 order place→review→cleanup", "SKIP", "no priced product to order")
         return
+    _, before = get("/api/orders/pending-review")
+    before_ids = {o.get("id") or o.get("order_id") for o in (before or [])} if isinstance(before, list) else set()
 
     hist = []
     s, reply, od, dt = ask(token, f"Order 2 cases of {pname} from US Foods")
@@ -322,15 +366,24 @@ def main():
     drill_ground_truth(gt)
     drill_assembly_math(gt)
 
-    print("\n── Chat drills (Taquito / LOM) ──")
     token = login()
-    if not token:
-        record("AUTH login", "SKIP",
-               "no VC_TEST_PIN set (or login failed) — chat drills skipped")
+    if PROBE_SAVE > 0:
+        # Focused frequency probe (Finding #1-B): login once, hammer the save path.
+        print(f"\n── PROBE: save-rate x{PROBE_SAVE} ──")
+        if not token:
+            record(f"PROBE save-rate x{PROBE_SAVE}", "SKIP", "no VC_TEST_PIN set")
+        else:
+            record("AUTH login", "PASS", "token acquired")
+            drill_save_frequency(token, gt, PROBE_SAVE)
     else:
-        record("AUTH login", "PASS", "token acquired")
-        drill_chat(token, gt)
-        drill_order_lifecycle(token, gt)
+        print("\n── Chat drills (Taquito / LOM) ──")
+        if not token:
+            record("AUTH login", "SKIP",
+                   "no VC_TEST_PIN set (or login failed) — chat drills skipped")
+        else:
+            record("AUTH login", "PASS", "token acquired")
+            drill_chat(token, gt)
+            drill_order_lifecycle(token, gt)
 
     # scorecard
     n = len(RESULTS)
