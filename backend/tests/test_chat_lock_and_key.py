@@ -87,6 +87,20 @@ def test_shear_line_readback_match_and_mismatch(db):
     assert mismatch_count is None
 
 
+def test_readback_failure_rolls_back_no_phantom_order(db, monkeypatch):
+    assembled = chat._tool_assemble_order([{"product_id": 1, "quantity": 2}], db)
+    draft_id = assembled["draft_id"]
+    monkeypatch.setattr(chat, "_readback_confirmation", lambda *a, **k: None)
+
+    result = chat._tool_save_order(draft_id, "chat", db)
+
+    assert result["status"] == "not_saved"
+    assert db.query(Order).count() == 0
+    draft = db.query(OrderDraft).filter(OrderDraft.id == draft_id).first()
+    assert draft is not None
+    assert draft.consumed_at is None
+
+
 def test_expired_draft_rejected_without_order(db):
     payload = chat._assemble_order_payload([{"product_id": 1, "quantity": 1}], db)
     draft = OrderDraft(

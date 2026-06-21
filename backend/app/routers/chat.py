@@ -916,11 +916,12 @@ def _tool_save_order(draft_id: str, origin_route: str, db: Session) -> dict:
     db.flush()
     draft.consumed_at = now
     draft.consumed_order_id = order.id
-    db.commit()
 
     receipt = _readback_confirmation(order.id, draft.total_cost, expected_item_count, db)
     if not receipt:
-        return {"status": "not_saved", "error": "Order write could not be verified. Please retry.", "order_id": order.id}
+        db.rollback()
+        return {"status": "not_saved", "error": "Order write could not be verified. No order was saved. Please retry."}
+    db.commit()
     return {"status": "saved", "confirmation_receipt": receipt}
 
 
@@ -1429,6 +1430,7 @@ async def chat(
 
     order_data = None
     confirmation_receipt = None
+    save_unverified_error = None
     max_iterations = 10
     for _ in range(max_iterations):
         active_tools = select_tools(messages)
@@ -1465,6 +1467,9 @@ async def chat(
                     assembled_order = result
                 if tc.function.name == "save_order" and result.get("confirmation_receipt"):
                     confirmation_receipt = result["confirmation_receipt"]
+                    save_unverified_error = None
+                elif tc.function.name == "save_order" and result.get("status") == "not_saved":
+                    save_unverified_error = result.get("error") or "The order could not be verified as saved. Please try again."
                 messages.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
@@ -1489,6 +1494,8 @@ async def chat(
 
             if confirmation_receipt:
                 reply_text = "Order saved. It's in the review queue."
+            elif save_unverified_error:
+                reply_text = save_unverified_error
 
             return {"reply": reply_text, "order_data": order_data, "confirmation_receipt": confirmation_receipt}
 
