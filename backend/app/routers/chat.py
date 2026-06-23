@@ -3,6 +3,7 @@
 Uses Ollama via the OpenAI-compatible API (no API key required).
 """
 import os
+import re
 import json
 import uuid
 import logging
@@ -667,6 +668,49 @@ def _latest_draft_id(request: ChatRequest) -> str | None:
         if message.draft_id:
             return message.draft_id
     return None
+
+
+_QUANTITY_PRODUCT_RE = re.compile(
+    r"(?:^|\b)(?:i\s+need|need|add|order|put\s+in|grab|get|want)?\s*"
+    r"(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)\s+"
+    r"[a-z][a-z0-9'\- ]*\b",
+    re.IGNORECASE,
+)
+_ARTICLE_ORDER_RE = re.compile(
+    r"\b(?:i\s+need|need|add|order|put\s+in|grab|get|want)\s+(?:a|an)\s+[a-z][a-z0-9'\- ]*\b",
+    re.IGNORECASE,
+)
+_ORDER_VERB_RE = re.compile(r"\b(?:i\s+need|need|add|order|put\s+in|grab|get|want)\b", re.IGNORECASE)
+_SAVE_CONFIRMATION_RE = re.compile(
+    r"\b(?:save\s+it|save\s+that|save\s+this|confirm(?:ed)?|yes\s*,?\s*save|looks\s+good|go\s+ahead|send\s+it)\b",
+    re.IGNORECASE,
+)
+
+
+def _looks_like_order_request(message: str | None) -> bool:
+    if not message:
+        return False
+    text = " ".join(message.strip().split())
+    if not text:
+        return False
+    if _QUANTITY_PRODUCT_RE.search(text):
+        return True
+    if _ARTICLE_ORDER_RE.search(text):
+        return True
+    return bool(_ORDER_VERB_RE.search(text) and re.search(r"\d", text))
+
+
+def _looks_like_save_confirmation(message: str | None) -> bool:
+    if not message:
+        return False
+    return bool(_SAVE_CONFIRMATION_RE.search(message.strip()))
+
+
+def _safe_no_draft_reply() -> str:
+    return (
+        "I couldn't turn that into a verified VendorCompare draft yet, so nothing was saved. "
+        "Please choose the exact product or try again with the catalog name."
+    )
 
 
 # ── Tool implementations ──────────────────────────────────────────────────────
@@ -1480,6 +1524,25 @@ async def chat(
 
         elif finish_reason == "stop":
             reply_text = message.content or ""
+            latest_user_message = ""
+            for request_message in reversed(request.messages):
+                if request_message.role == "user":
+                    latest_user_message = request_message.content
+                    break
+
+            if confirmation_receipt:
+                reply_text = "Order saved. It's in the review queue."
+            elif save_unverified_error:
+                reply_text = save_unverified_error
+            elif (
+                order_data is None
+                and confirmation_receipt is None
+                and (
+                    _looks_like_order_request(latest_user_message)
+                    or _looks_like_save_confirmation(latest_user_message)
+                )
+            ):
+                reply_text = _safe_no_draft_reply()
 
             # T7 — persist conversation turn
             try:
@@ -1491,11 +1554,6 @@ async def chat(
                 db.commit()
             except Exception:
                 db.rollback()
-
-            if confirmation_receipt:
-                reply_text = "Order saved. It's in the review queue."
-            elif save_unverified_error:
-                reply_text = save_unverified_error
 
             return {"reply": reply_text, "order_data": order_data, "confirmation_receipt": confirmation_receipt}
 
