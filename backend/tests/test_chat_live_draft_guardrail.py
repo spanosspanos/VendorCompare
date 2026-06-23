@@ -65,7 +65,7 @@ def test_stop_without_draft_for_order_request_returns_safe_no_draft_response(db,
         lambda **kwargs: _stub_completion(fabricated),
     )
 
-    payload = _chat_response("I need 2 limes", db)
+    payload = _chat_response("I need 2 limes and 3 avocados", db)
     assert payload["reply"] == chat._safe_no_draft_reply()
     assert payload["order_data"] is None
     assert payload["confirmation_receipt"] is None
@@ -98,3 +98,79 @@ def test_stop_without_draft_for_non_order_conversation_preserves_model_reply(db,
     payload = _chat_response("hello", db)
 
     assert payload["reply"] == normal_reply
+
+
+def test_extract_order_item_basic():
+    extracted = chat._extract_order_item("I need 2 limes")
+    assert extracted is not None
+    item_text, quantity = extracted
+    assert "lime" in item_text.lower()
+    assert quantity == 2.0
+
+
+def test_extract_order_item_no_quantity():
+    assert chat._extract_order_item("I need avocados") is None
+
+
+def test_extract_order_item_multi_item():
+    assert chat._extract_order_item("I need 2 limes and 3 avocados") is None
+
+
+def test_quick_path_zero_matches(db, monkeypatch):
+    extracted = chat._extract_order_item("I need 2 limes")
+    assert extracted == ("limes", 2.0)
+    search_result = chat._tool_search_products(extracted[0], db)
+    assert search_result["matches"] == []
+
+    def fail_if_called(**kwargs):
+        raise AssertionError("model should not be called for zero-match quick path")
+
+    monkeypatch.setattr(chat.client.chat.completions, "create", fail_if_called)
+
+    payload = _chat_response("I need 2 limes", db)
+    assert payload["reply"] == "I don't see that in the catalog. Try the exact product name, or ask me to search."
+    assert payload["order_data"] is None
+    assert payload["confirmation_receipt"] is None
+
+
+def test_quick_path_single_match_sets_order_data(db, monkeypatch):
+    from app.models import Category, Product, Vendor, Price
+
+    db.add(Category(id=1, name="Produce", sort_order=1))
+    db.add(Vendor(id=1, name="Food Direct", is_muted=False, is_deleted=False))
+    db.add(Product(id=32, name="Limes", category_id=1, unit="case"))
+    db.add(Price(product_id=32, vendor_id=1, price=10.0, unit="case"))
+    db.commit()
+
+    monkeypatch.setattr(
+        chat.client.chat.completions,
+        "create",
+        lambda **kwargs: _stub_completion("I found limes and assembled a draft."),
+    )
+
+    payload = _chat_response("I need 2 limes", db)
+    assert payload["order_data"] is not None
+    assert payload["order_data"].get("draft_id")
+    assert payload["confirmation_receipt"] is None
+
+
+def test_quick_path_multi_match_no_auto_assemble(db, monkeypatch):
+    from app.models import Category, Product, Vendor, Price
+
+    db.add(Category(id=1, name="Dry Goods", sort_order=1))
+    db.add(Vendor(id=1, name="Food Direct", is_muted=False, is_deleted=False))
+    db.add(Product(id=10, name="5 Inch Flour Tortilla", category_id=1, unit="case"))
+    db.add(Product(id=11, name="12 Inch Flour Tortilla", category_id=1, unit="case"))
+    db.add(Price(product_id=10, vendor_id=1, price=20.0, unit="case"))
+    db.add(Price(product_id=11, vendor_id=1, price=30.0, unit="case"))
+    db.commit()
+
+    monkeypatch.setattr(
+        chat.client.chat.completions,
+        "create",
+        lambda **kwargs: _stub_completion("Which tortilla do you mean?"),
+    )
+
+    payload = _chat_response("I need 2 tortilla", db)
+    assert payload["order_data"] is None
+    assert payload["confirmation_receipt"] is None

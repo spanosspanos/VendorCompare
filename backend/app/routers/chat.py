@@ -685,6 +685,30 @@ _SAVE_CONFIRMATION_RE = re.compile(
     r"\b(?:save\s+it|save\s+that|save\s+this|confirm(?:ed)?|yes\s*,?\s*save|looks\s+good|go\s+ahead|send\s+it)\b",
     re.IGNORECASE,
 )
+_QUANTITY_WORDS = {
+    "one": 1.0,
+    "two": 2.0,
+    "three": 3.0,
+    "four": 4.0,
+    "five": 5.0,
+    "six": 6.0,
+    "seven": 7.0,
+    "eight": 8.0,
+    "nine": 9.0,
+    "ten": 10.0,
+}
+_QUANTITY_TOKEN = r"(?:\d+(?:\.\d+)?|one|two|three|four|five|six|seven|eight|nine|ten)"
+_ORDER_ITEM_EXTRACT_RE = re.compile(
+    rf"^\s*(?:i\s+need|need|add|order|put\s+in|grab|get|want)?\s*"
+    rf"(?P<quantity>{_QUANTITY_TOKEN})\s+"
+    r"(?P<item>[a-z][a-z0-9'\- ]*?)"
+    r"\s*(?:please)?[.!?]?\s*$",
+    re.IGNORECASE,
+)
+_MULTI_ITEM_RE = re.compile(
+    rf"\b{_QUANTITY_TOKEN}\s+[a-z][a-z0-9'\- ]*?\s+and\s+{_QUANTITY_TOKEN}\s+[a-z]",
+    re.IGNORECASE,
+)
 
 
 def _looks_like_order_request(message: str | None) -> bool:
@@ -706,11 +730,60 @@ def _looks_like_save_confirmation(message: str | None) -> bool:
     return bool(_SAVE_CONFIRMATION_RE.search(message.strip()))
 
 
+def _extract_order_item(message: str) -> tuple[str, float] | None:
+    """Extract a single quantity + product phrase for deterministic quick-path.
+
+    Returns None for no-quantity and obvious multi-item utterances so the normal
+    model/tool flow can handle richer or ambiguous requests.
+    """
+    text = " ".join((message or "").strip().split())
+    if not text or _MULTI_ITEM_RE.search(text):
+        return None
+
+    match = _ORDER_ITEM_EXTRACT_RE.match(text)
+    if not match:
+        return None
+
+    item_text = match.group("item").strip(" ,.;:!?\t")
+    if not item_text or " and " in f" {item_text.lower()} ":
+        return None
+
+    raw_quantity = match.group("quantity").lower()
+    quantity = _QUANTITY_WORDS.get(raw_quantity)
+    if quantity is None:
+        try:
+            quantity = float(raw_quantity)
+        except ValueError:
+            return None
+    return (item_text, float(quantity))
+
+
 def _safe_no_draft_reply() -> str:
     return (
         "I couldn't turn that into a verified VendorCompare draft yet, so nothing was saved. "
         "Please choose the exact product or try again with the catalog name."
     )
+
+
+def _inject_preexecuted_tool_call(messages: list[dict], tool_name: str, arguments: dict, result: dict) -> None:
+    pre_call_id = f"pre_{uuid.uuid4().hex[:8]}"
+    messages.append({
+        "role": "assistant",
+        "content": None,
+        "tool_calls": [{
+            "id": pre_call_id,
+            "type": "function",
+            "function": {
+                "name": tool_name,
+                "arguments": json.dumps(arguments),
+            },
+        }],
+    })
+    messages.append({
+        "role": "tool",
+        "tool_call_id": pre_call_id,
+        "content": json.dumps(result),
+    })
 
 
 # ── Tool implementations ──────────────────────────────────────────────────────
@@ -1473,6 +1546,48 @@ async def chat(
     messages += [{"role": m.role, "content": m.content} for m in request.messages]
 
     order_data = None
+    latest_user_message = ""
+    for request_message in reversed(request.messages):
+        if request_message.role == "user":
+            latest_user_message = request_message.content
+            break
+
+    if latest_user_message and draft_id is None and _looks_like_order_request(latest_user_message):
+        quick_path_item = _extract_order_item(latest_user_message)
+        if quick_path_item:
+            item_text, quantity = quick_path_item
+            search_result = _tool_search_products(item_text, db)
+            matches = search_result.get("matches", [])
+            if not matches:
+                return {
+                    "reply": "I don't see that in the catalog. Try the exact product name, or ask me to search.",
+                    "order_data": None,
+                    "confirmation_receipt": None,
+                }
+
+            _inject_preexecuted_tool_call(
+                messages,
+                "search_products",
+                {"query": item_text},
+                search_result,
+            )
+
+            if len(matches) == 1:
+                match = matches[0]
+                assemble_items = [{"product_id": match["product_id"], "quantity": quantity}]
+                assembled = _tool_assemble_order(assemble_items, db)
+                _inject_preexecuted_tool_call(
+                    messages,
+                    "assemble_order",
+                    {"items": assemble_items},
+                    assembled,
+                )
+                order_data = assembled
+                messages.append({
+                    "role": "system",
+                    "content": f"Current assembled order draft_id: {assembled['draft_id']}. If John confirms/saves this order, call save_order with exactly this draft_id.",
+                })
+
     confirmation_receipt = None
     save_unverified_error = None
     max_iterations = 10
@@ -1524,11 +1639,6 @@ async def chat(
 
         elif finish_reason == "stop":
             reply_text = message.content or ""
-            latest_user_message = ""
-            for request_message in reversed(request.messages):
-                if request_message.role == "user":
-                    latest_user_message = request_message.content
-                    break
 
             if confirmation_receipt:
                 reply_text = "Order saved. It's in the review queue."
