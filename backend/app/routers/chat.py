@@ -1588,6 +1588,32 @@ async def chat(
                     "content": f"Current assembled order draft_id: {assembled['draft_id']}. If John confirms/saves this order, call save_order with exactly this draft_id.",
                 })
 
+    # Deterministic save path: draft_id present + save-confirm message → bypass LLM entirely.
+    # Prevents model reconstruction drift where LLM re-calls assemble_order and saves wrong product.
+    if draft_id and latest_user_message and _looks_like_save_confirmation(latest_user_message):
+        save_result = _tool_save_order(draft_id, "chat", db)
+        if save_result.get("confirmation_receipt"):
+            try:
+                if request.messages:
+                    user_msg = request.messages[-1]
+                    if user_msg.role == "user":
+                        db.add(ChatMessageModel(role="user", content=user_msg.content, location_id=1))
+                db.add(ChatMessageModel(role="assistant", content="Order saved. It's in the review queue.", location_id=1))
+                db.commit()
+            except Exception:
+                db.rollback()
+            return {
+                "reply": "Order saved. It's in the review queue.",
+                "order_data": None,
+                "confirmation_receipt": save_result["confirmation_receipt"],
+            }
+        else:
+            return {
+                "reply": save_result.get("error", "Order could not be saved. Please try again."),
+                "order_data": None,
+                "confirmation_receipt": None,
+            }
+
     confirmation_receipt = None
     save_unverified_error = None
     max_iterations = 10
