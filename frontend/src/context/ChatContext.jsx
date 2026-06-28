@@ -56,6 +56,11 @@ export function ChatProvider({ children }) {
     }
   }
 
+  const clearDraft = () => {
+    setOrderData(null)
+    setDraftId(null)
+  }
+
   const clearMessages = () => {
     setConversationHistory([])
     setDisplayMessages([
@@ -74,6 +79,7 @@ export function ChatProvider({ children }) {
       orderData,
       draftId,
       addMessage,
+      clearDraft,
       clearMessages,
       setConversationHistory,
       setDisplayMessages,

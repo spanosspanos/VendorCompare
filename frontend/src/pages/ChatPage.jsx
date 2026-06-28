@@ -15,6 +15,7 @@ export default function ChatPage() {
     setDisplayMessages,
     addMessage,
     draftId,
+    clearDraft,
   } = useChat()
   const navigate = useNavigate()
   const location = useLocation()
@@ -36,6 +37,10 @@ export default function ChatPage() {
     setInputValue('')
     setError(null)
 
+    const isSaveConfirm = /\b(?:save\s+it|save\s+that|confirm(?:ed)?|yes\s*,?\s*save|looks\s+good|go\s+ahead|send\s+it)\b/i.test(text)
+    const effectiveDraftId = (draftId && !isSaveConfirm) ? null : draftId
+    if (draftId && !isSaveConfirm) clearDraft()
+
     const userMessage = { role: 'user', content: text }
     const newHistory = [...conversationHistory, userMessage]
     setConversationHistory(newHistory)
@@ -43,7 +48,7 @@ export default function ChatPage() {
     setLoading(true)
 
     try {
-      const res = await sendChat(newHistory, token, draftId)
+      const res = await sendChat(newHistory, token, effectiveDraftId)
       const { reply, order_data, confirmation_receipt } = res.data
       const assistantMessage = { role: 'assistant', content: reply }
       setConversationHistory(prev => [...prev, assistantMessage])
