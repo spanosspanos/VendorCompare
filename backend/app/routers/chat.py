@@ -944,6 +944,14 @@ def _draft_item_count(payload: dict) -> int:
     return sum(len(vo.get("items", [])) for vo in payload.get("vendor_orders", []))
 
 
+class ReadbackMismatch(RuntimeError):
+    """A committed write whose durable state does not meet its contract."""
+
+    def __init__(self, envelope: dict):
+        self.envelope = envelope
+        super().__init__(f"{envelope['verb']} on {envelope['entity']} could not be confirmed")
+
+
 def _tool_assemble_order(items: list, db: Session) -> dict:
     payload = _assemble_order_payload(items, db)
     draft_id = uuid.uuid4().hex
@@ -960,34 +968,6 @@ def _tool_assemble_order(items: list, db: Session) -> dict:
     db.commit()
     payload["draft_id"] = draft_id
     return payload
-
-
-def _confirmation_receipt(order: Order, item_count: int) -> dict:
-    return {
-        "order_id": int(order.id),
-        "status": order.status,
-        "review_status": order.review_status,
-        "created_at": order.created_at.isoformat() if order.created_at else datetime.now(timezone.utc).isoformat(),
-        "total_cost": float(order.total_cost),
-        "savings_vs_worst": float(order.savings_vs_worst),
-        "item_count": int(item_count),
-        "vendor_splits": [
-            {"vendor": split.vendor.name if split.vendor else f"Vendor #{split.vendor_id}", "total": float(split.total)}
-            for split in order.vendor_splits
-        ],
-    }
-
-
-def _readback_confirmation(order_id: int, expected_total: float, expected_item_count: int, db: Session) -> dict | None:
-    order = db.query(Order).filter(Order.id == order_id).first()
-    if not order:
-        return None
-    item_count = db.query(func.count(OrderItem.id)).filter(OrderItem.order_id == order.id).scalar() or 0
-    if round(float(order.total_cost), 2) != round(float(expected_total), 2):
-        return None
-    if int(item_count) != int(expected_item_count):
-        return None
-    return _confirmation_receipt(order, int(item_count))
 
 
 def _tool_save_order(draft_id: str, origin_route: str, db: Session) -> dict:
@@ -1034,12 +1014,20 @@ def _tool_save_order(draft_id: str, origin_route: str, db: Session) -> dict:
     draft.consumed_at = now
     draft.consumed_order_id = order.id
 
-    receipt = _readback_confirmation(order.id, draft.total_cost, expected_item_count, db)
-    if not receipt:
+    # Retain the shipped pre-commit transactional guard.  It is deliberately
+    # separate from R1's post-commit perception envelope below.
+    if not _save_order_precommit_guard(order.id, draft.total_cost, expected_item_count, db):
         db.rollback()
         return {"status": "not_saved", "error": "Order write could not be verified. No order was saved. Please retry."}
     db.commit()
-    return {"status": "saved", "confirmation_receipt": receipt}
+    return {"_order_id": int(order.id), "_expected_total": float(draft.total_cost), "_expected_item_count": expected_item_count}
+
+
+def _save_order_precommit_guard(order_id: int, expected_total: float, expected_item_count: int, db: Session) -> bool:
+    """Existing transactional durability guard; it is not an R1 readback."""
+    order = db.query(Order).filter(Order.id == order_id).first()
+    item_count = db.query(func.count(OrderItem.id)).filter(OrderItem.order_id == order_id).scalar() or 0
+    return bool(order) and round(float(order.total_cost), 2) == round(float(expected_total), 2) and int(item_count) == int(expected_item_count)
 
 
 def _tool_get_par_order(db: Session) -> dict:
@@ -1445,9 +1433,111 @@ def _tool_get_synonyms(db: Session) -> dict:
     }
 
 
+# Every write crosses this named, post-commit re-read boundary.  The finite
+# contract set is also consumed by the surface survey instrument (AC-0/AC-1).
+STATE_CHANGING_TOOL_SPECS = {
+    "assemble_order": None,
+    "save_order": None,
+    "lock_vendor": None,
+    "unlock_vendor": None,
+    "set_par_value": None,
+    "mute_vendor": None,
+    "unmute_vendor": None,
+    "set_price": None,
+    "note_synonym": None,
+    "flag_item": None,
+    "add_order_note": None,
+    "add_product": None,
+    "mute_product": None,
+    "unmute_product": None,
+    "review_order": None,
+    "dismiss_order": None,
+    "delete_order": None,
+    "edit_order": None,
+}
+
+
+def _post_commit_readback(tool_name: str, tool_input: dict, raw: dict, db: Session) -> dict:
+    """Re-query committed rows and construct the one R1 envelope shape."""
+    invariants: list[dict] = []
+    if tool_name == "assemble_order":
+        draft = db.query(OrderDraft).filter(OrderDraft.id == raw["draft_id"]).first()
+        observed = {
+            "draft_id": draft.id if draft else None,
+            "total_cost": float(draft.total_cost) if draft else None,
+            "item_count": int(draft.item_count) if draft else None,
+            "vendor_orders": json.loads(draft.payload_json).get("vendor_orders", []) if draft else [],
+            "savings_vs_worst": float(draft.savings_vs_worst) if draft else None,
+        }
+        payload = json.loads(draft.payload_json) if draft else {}
+        split_total = round(sum(float(v.get("subtotal", 0)) for v in payload.get("vendor_orders", [])), 2)
+        invariants = [{"assertion": "vendor_splits.sum(subtotal) == draft.total_cost", "result": bool(draft) and split_total == round(float(draft.total_cost), 2)}]
+        entity, entity_id, expected = "OrderDraft", raw["draft_id"], {"draft_id": raw["draft_id"]}
+    elif tool_name == "save_order":
+        order = db.query(Order).filter(Order.id == raw["_order_id"]).first()
+        items = db.query(OrderItem).filter(OrderItem.order_id == raw["_order_id"]).all()
+        splits = db.query(OrderVendorSplit).filter(OrderVendorSplit.order_id == raw["_order_id"]).all()
+        observed = {"total_cost": float(order.total_cost) if order else None, "item_count": len(items), "vendor_splits": [{"vendor_id": s.vendor_id, "total": float(s.total)} for s in splits]}
+        invariants = [{"assertion": "splits.sum(total) == order.total_cost", "result": bool(order) and round(sum(float(s.total) for s in splits), 2) == round(float(order.total_cost), 2)}]
+        entity, entity_id, expected = "Order", raw["_order_id"], {"total_cost": raw["_expected_total"], "item_count": raw["_expected_item_count"]}
+    elif tool_name in {"lock_vendor", "unlock_vendor", "set_par_value"}:
+        row = db.query(ParSetting).filter(ParSetting.product_id == tool_input["product_id"], ParSetting.location_id == 1).first()
+        observed = {"product_id": tool_input["product_id"], "locked_vendor_id": row.locked_vendor_id if row else None, "par_value": row.par_value if row else None, "updated_at": row.updated_at.isoformat() if row and row.updated_at else None}
+        expected = ({"locked_vendor_id": tool_input["vendor_id"]} if tool_name == "lock_vendor" else {"locked_vendor_id": None} if tool_name == "unlock_vendor" else {"par_value": int(tool_input["par_value"])})
+        entity, entity_id = "ParSetting", row.id if row else None
+    elif tool_name in {"mute_vendor", "unmute_vendor"}:
+        row = db.query(Vendor).filter(Vendor.id == tool_input["vendor_id"]).first()
+        observed, expected, entity, entity_id = {"vendor_id": tool_input["vendor_id"], "is_muted": row.is_muted if row else None}, {"is_muted": tool_name == "mute_vendor"}, "Vendor", tool_input["vendor_id"]
+    elif tool_name in {"mute_product", "unmute_product"}:
+        row = db.query(Product).filter(Product.id == tool_input["product_id"]).first()
+        observed, expected, entity, entity_id = {"product_id": tool_input["product_id"], "muted": row.muted if row else None}, {"muted": tool_name == "mute_product"}, "Product", tool_input["product_id"]
+    elif tool_name == "set_price":
+        row = db.query(Price).filter(Price.product_id == tool_input["product_id"], Price.vendor_id == tool_input["vendor_id"]).order_by(Price.updated_at.desc()).first()
+        audit = db.query(AuditLog).filter(AuditLog.product_id == tool_input["product_id"], AuditLog.vendor_id == tool_input["vendor_id"], AuditLog.new_price == tool_input["price"]).order_by(AuditLog.id.desc()).first()
+        observed = {"product_id": tool_input["product_id"], "vendor_id": tool_input["vendor_id"], "price": float(row.price) if row else None, "updated_at": row.updated_at.isoformat() if row and row.updated_at else None}
+        invariants = [{"assertion": "price_audit.new_price == price.price", "result": bool(row and audit) and float(audit.new_price) == float(row.price)}]
+        expected, entity, entity_id = {"price": float(tool_input["price"])}, "Price", row.id if row else None
+    elif tool_name == "note_synonym":
+        row = db.query(Synonym).filter(func.lower(Synonym.alias) == tool_input["alias"].lower(), Synonym.location_id == 1).first()
+        observed, expected, entity, entity_id = {"alias": row.alias if row else None, "canonical": row.canonical if row else None}, {"canonical": tool_input["canonical"]}, "Synonym", row.id if row else None
+    elif tool_name == "flag_item":
+        row = db.query(OrderItem).filter(OrderItem.order_id == tool_input["order_id"], OrderItem.product_id == tool_input["product_id"]).first()
+        order = db.query(Order).filter(Order.id == tool_input["order_id"]).first()
+        flagged = db.query(OrderItem).filter(OrderItem.order_id == tool_input["order_id"], OrderItem.flag != None, OrderItem.flag != "").count()
+        observed = {"order_id": tool_input["order_id"], "product_id": tool_input["product_id"], "flag": row.flag if row else None, "taco_flag_count": order.taco_flag_count if order else None}
+        invariants = [{"assertion": "order.taco_flag_count == flagged_items.count", "result": bool(order) and order.taco_flag_count == flagged}]
+        expected, entity, entity_id = {"flag": tool_input["note"]}, "OrderItem", row.id if row else None
+    elif tool_name in {"add_order_note", "review_order", "dismiss_order", "edit_order"}:
+        row = db.query(Order).filter(Order.id == tool_input["order_id"]).first()
+        items = db.query(OrderItem).filter(OrderItem.order_id == tool_input["order_id"]).all() if row else []
+        splits = db.query(OrderVendorSplit).filter(OrderVendorSplit.order_id == tool_input["order_id"]).all() if row else []
+        observed = {"order_id": tool_input["order_id"], "notes_to_john": row.notes_to_john if row else None, "review_status": row.review_status if row else None, "total_cost": float(row.total_cost) if row else None, "item_count": len(items)}
+        if tool_name == "add_order_note": expected = {"notes_to_john": tool_input["note"]}
+        elif tool_name == "review_order": expected = {"review_status": "approved" if tool_input["action"] == "approve" else "rejected"}
+        elif tool_name == "dismiss_order": expected = {"review_status": "dismissed"}
+        else:
+            expected = {"notes_to_john": tool_input["notes_to_john"]} if tool_input.get("notes_to_john") is not None else {}
+            if tool_input.get("items"):
+                invariants = [{"assertion": "splits.sum(total) == order.total_cost", "result": bool(row) and round(sum(float(s.total) for s in splits), 2) == round(float(row.total_cost), 2)}]
+        entity, entity_id = "Order", tool_input["order_id"]
+    elif tool_name == "add_product":
+        row = db.query(Product).filter(Product.id == raw["product_id"]).first()
+        observed, expected, entity, entity_id = {"name": row.name if row else None, "category_id": row.category_id if row else None, "unit": row.unit if row else None}, {"name": tool_input["name"], "category_id": tool_input["category_id"]}, "Product", raw["product_id"]
+    elif tool_name == "delete_order":
+        row = db.query(Order).filter(Order.id == tool_input["order_id"]).first()
+        observed, expected, entity, entity_id = {"order_id": tool_input["order_id"], "deleted": row is None}, {"deleted": True}, "Order", tool_input["order_id"]
+    else:
+        raise ValueError(f"No readback contract for {tool_name}")
+    match = all(observed.get(key) == value for key, value in expected.items()) and all(i["result"] for i in invariants)
+    envelope = {"ok": match, "verb": tool_name, "entity": entity, "id": entity_id, "observed": observed, "expected": expected, "invariants": invariants, "match": match}
+    if not match:
+        raise ReadbackMismatch(envelope)
+    return envelope
+
+
 # ── Tool dispatcher ───────────────────────────────────────────────────────────
 
-def execute_tool(tool_name: str, tool_input: dict, db: Session) -> Any:
+def _execute_tool_legacy(tool_name: str, tool_input: dict, db: Session) -> Any:
     if tool_name == "search_products":
         return _tool_search_products(tool_input["query"], db)
     elif tool_name == "assemble_order":
@@ -1514,6 +1604,29 @@ def execute_tool(tool_name: str, tool_input: dict, db: Session) -> Any:
         return _tool_get_synonyms(db)
     else:
         return {"error": f"Unknown tool: {tool_name}"}
+
+
+def execute_tool(tool_name: str, tool_input: dict, db: Session) -> Any:
+    raw = _execute_tool_legacy(tool_name, tool_input, db)
+    if tool_name not in STATE_CHANGING_TOOL_SPECS:
+        return raw
+    # State-changing tool contracts never carry prose, including rejected
+    # preconditions. They terminate at the same deterministic harness path.
+    if isinstance(raw, dict) and ("error" in raw or "status" in raw):
+        envelope = {"ok": False, "verb": tool_name, "entity": "Write", "id": None,
+                    "observed": {"committed": False}, "expected": {"committed": True},
+                    "invariants": [{"assertion": "write precondition", "result": False}], "match": False}
+        raise ReadbackMismatch(envelope)
+    return _post_commit_readback(tool_name, tool_input, raw, db)
+
+
+def _render_readback_confirmation(observed: dict) -> str:
+    """The named success renderer; observed is intentionally non-optional."""
+    return "Your change was confirmed from the saved record."
+
+
+def _render_unconfirmed_write(verb: str, entity: str) -> str:
+    return f"I couldn't confirm that {verb.replace('_', ' ')} for {entity}. Please check the corresponding manager screen before relying on it."
 
 
 # ── Chat endpoint ─────────────────────────────────────────────────────────────
@@ -1621,11 +1734,24 @@ async def chat(
             })
             for tc in message.tool_calls:
                 tool_input = json.loads(tc.function.arguments)
-                result = execute_tool(tc.function.name, tool_input, db)
+                try:
+                    result = execute_tool(tc.function.name, tool_input, db)
+                except ReadbackMismatch as mismatch:
+                    # Do not append a divergent envelope to the model context.
+                    # This is the sole deterministic R1 failure path.
+                    reply_text = _render_unconfirmed_write(mismatch.envelope["verb"], mismatch.envelope["entity"])
+                    try:
+                        if request.messages and request.messages[-1].role == "user":
+                            db.add(ChatMessageModel(role="user", content=request.messages[-1].content, location_id=1))
+                        db.add(ChatMessageModel(role="assistant", content=reply_text, location_id=1))
+                        db.commit()
+                    except Exception:
+                        db.rollback()
+                    return {"reply": reply_text, "order_data": order_data, "confirmation_receipt": None}
                 if tc.function.name == "assemble_order":
-                    assembled_order = result
-                if tc.function.name == "save_order" and result.get("confirmation_receipt"):
-                    confirmation_receipt = result["confirmation_receipt"]
+                    assembled_order = result.get("observed", result)
+                if tc.function.name == "save_order" and result.get("match"):
+                    confirmation_receipt = result
                     save_unverified_error = None
                 elif tc.function.name == "save_order" and result.get("status") == "not_saved":
                     save_unverified_error = result.get("error") or "The order could not be verified as saved. Please try again."
@@ -1641,7 +1767,7 @@ async def chat(
             reply_text = message.content or ""
 
             if confirmation_receipt:
-                reply_text = "Order saved. It's in the review queue."
+                reply_text = _render_readback_confirmation(confirmation_receipt["observed"])
             elif save_unverified_error:
                 reply_text = save_unverified_error
             elif (

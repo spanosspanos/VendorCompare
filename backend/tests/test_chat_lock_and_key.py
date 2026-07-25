@@ -35,28 +35,21 @@ def db():
         session.close()
 
 
-def assert_receipt_shape(receipt):
-    assert set(receipt) == {
-        "order_id", "status", "review_status", "created_at", "total_cost",
-        "savings_vs_worst", "item_count", "vendor_splits",
-    }
-    assert isinstance(receipt["order_id"], int)
-    assert receipt["status"] == "saved"
-    assert receipt["review_status"] == "pending"
-    assert isinstance(receipt["created_at"], str)
-    assert isinstance(receipt["total_cost"], float)
-    assert isinstance(receipt["savings_vs_worst"], float)
-    assert isinstance(receipt["item_count"], int)
-    assert isinstance(receipt["vendor_splits"], list)
-    assert isinstance(receipt["vendor_splits"][0]["vendor"], str)
-    assert isinstance(receipt["vendor_splits"][0]["total"], float)
+def assert_envelope_shape(envelope):
+    assert set(envelope) == {"ok", "verb", "entity", "id", "observed", "expected", "invariants", "match"}
+    assert envelope["ok"] is True
+    assert envelope["match"] is True
+    assert isinstance(envelope["observed"], dict)
+    assert isinstance(envelope["expected"], dict)
+    assert isinstance(envelope["invariants"], list)
 
 
-def test_keyway_confirmation_receipt_shape(db):
+def test_keyway_readback_envelope_shape(db):
     assembled = chat._tool_assemble_order([{"product_id": 1, "quantity": 2}], db)
-    saved = chat._tool_save_order(assembled["draft_id"], "chat", db)
-    assert saved["status"] == "saved"
-    assert_receipt_shape(saved["confirmation_receipt"])
+    saved = chat.execute_tool("save_order", {"draft_id": assembled["draft_id"], "origin_route": "chat"}, db)
+    assert_envelope_shape(saved)
+    assert saved["verb"] == "save_order"
+    assert saved["entity"] == "Order"
 
 
 def test_tumblers_double_save_yields_exactly_one_order(db):
@@ -64,33 +57,35 @@ def test_tumblers_double_save_yields_exactly_one_order(db):
     draft_id = assembled["draft_id"]
     assert db.query(OrderDraft).filter(OrderDraft.id == draft_id).count() == 1
 
-    first = chat._tool_save_order(draft_id, "chat", db)
-    second = chat._tool_save_order(draft_id, "chat", db)
+    first = chat.execute_tool("save_order", {"draft_id": draft_id, "origin_route": "chat"}, db)
+    with pytest.raises(chat.ReadbackMismatch):
+        chat.execute_tool("save_order", {"draft_id": draft_id, "origin_route": "chat"}, db)
 
-    assert first["status"] == "saved"
-    assert second["status"] == "not_saved"
+    assert first["match"] is True
     assert db.query(Order).count() == 1
 
 
-def test_shear_line_readback_match_and_mismatch(db):
+def test_shear_line_readback_is_post_commit_and_falsifiable(db, monkeypatch):
     assembled = chat._tool_assemble_order([{"product_id": 1, "quantity": 2}], db)
-    saved = chat._tool_save_order(assembled["draft_id"], "chat", db)
-    order_id = saved["confirmation_receipt"]["order_id"]
+    saved = chat.execute_tool("save_order", {"draft_id": assembled["draft_id"], "origin_route": "chat"}, db)
+    assert_envelope_shape(saved)
+    assert saved["observed"]["total_cost"] == 20.0
 
-    match = chat._readback_confirmation(order_id, expected_total=20.0, expected_item_count=1, db=db)
-    mismatch_total = chat._readback_confirmation(order_id, expected_total=999.0, expected_item_count=1, db=db)
-    mismatch_count = chat._readback_confirmation(order_id, expected_total=20.0, expected_item_count=99, db=db)
-
-    assert match is not None
-    assert_receipt_shape(match)
-    assert mismatch_total is None
-    assert mismatch_count is None
+    original = chat._post_commit_readback
+    def divergent(*args, **kwargs):
+        envelope = original(*args, **kwargs)
+        envelope["match"] = False
+        raise chat.ReadbackMismatch(envelope)
+    monkeypatch.setattr(chat, "_post_commit_readback", divergent)
+    assembled = chat._tool_assemble_order([{"product_id": 1, "quantity": 2}], db)
+    with pytest.raises(chat.ReadbackMismatch):
+        chat.execute_tool("save_order", {"draft_id": assembled["draft_id"], "origin_route": "chat"}, db)
 
 
 def test_readback_failure_rolls_back_no_phantom_order(db, monkeypatch):
     assembled = chat._tool_assemble_order([{"product_id": 1, "quantity": 2}], db)
     draft_id = assembled["draft_id"]
-    monkeypatch.setattr(chat, "_readback_confirmation", lambda *a, **k: None)
+    monkeypatch.setattr(chat, "_save_order_precommit_guard", lambda *a, **k: False)
 
     result = chat._tool_save_order(draft_id, "chat", db)
 
