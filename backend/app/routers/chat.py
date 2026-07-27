@@ -1703,6 +1703,7 @@ async def chat(
 
     confirmation_receipt = None
     save_unverified_error = None
+    any_tool_committed = False
     max_iterations = 10
     for _ in range(max_iterations):
         active_tools = select_tools(messages)
@@ -1748,6 +1749,8 @@ async def chat(
                     except Exception:
                         db.rollback()
                     return {"reply": reply_text, "order_data": order_data, "confirmation_receipt": None}
+                if tc.function.name in STATE_CHANGING_TOOL_SPECS:
+                    any_tool_committed = True
                 if tc.function.name == "assemble_order":
                     assembled_order = result.get("observed", result)
                 if tc.function.name == "save_order" and result.get("match"):
@@ -1773,6 +1776,7 @@ async def chat(
             elif (
                 order_data is None
                 and confirmation_receipt is None
+                and not any_tool_committed
                 and (
                     _looks_like_order_request(latest_user_message)
                     or _looks_like_save_confirmation(latest_user_message)

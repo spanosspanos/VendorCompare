@@ -1,5 +1,6 @@
 # openai: desktop-edition dep (web backend does not install it); pin to proven version from the Mac build env when the desktop pinning lands.
 openai>=1.0.0
+httpx==0.27.2
 fastapi==0.109.0
 uvicorn[standard]==0.27.0
 sqlalchemy==2.0.25
