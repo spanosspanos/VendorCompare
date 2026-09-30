@@ -1,0 +1,35 @@
+{
+  "base_url": "http://127.0.0.1:8002",
+  "attempts_planned": 2,
+  "iterations": [
+    {
+      "i": 1,
+      "assemble_status": 200,
+      "assemble_seconds": 29.86,
+      "assemble_has_order_data": false,
+      "draft_id": null,
+      "assemble_reply_excerpt": "I couldn't turn that into a verified VendorCompare draft yet, so nothing was saved. Please choose the exact product or try again with the catalog name.",
+      "guardrail_no_draft": true
+    }
+  ],
+  "started_at": "2026-06-23T01:57:35Z",
+  "fail_fast": true,
+  "login_status": 200,
+  "before": {
+    "count": 62,
+    "max_id": 64
+  },
+  "halt_reason": "first_turn_no_order_data",
+  "after": {
+    "count": 62,
+    "max_id": 64,
+    "new_ids_after_cleanup": []
+  },
+  "summary": {
+    "attempted_iterations": 1,
+    "drafts": 0,
+    "guardrail_no_draft": 1,
+    "persisted_after": 0
+  },
+  "finished_at": "2026-06-23T01:58:06Z"
+}

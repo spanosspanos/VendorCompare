@@ -1,0 +1,67 @@
+# R1 B-1 Two-Sided Sweep
+
+Run UTC: `2026-07-27T22:20:17.083963+00:00`  
+Harness: `backend/scripts/r1_b1_sweep.py`; real FastAPI `TestClient` against the real router and configured Ollama `qwen2.5:7b` at `TAQUITO_TEMPERATURE=0.1`; no listening port.
+DB safety: copied `backend/vendorcompare.db` before imports to `/var/folders/gy/pszrs4n96q9bd4c3hnvhvcpr0000gn/T/vendorcompare-r1-b1-asdd6181/vendorcompare.db`; `DATABASE_URL` pointed only to that copy.
+Re-run: `cd backend && TAQUITO_TEMPERATURE=0.1 .venv_electron/bin/python scripts/r1_b1_sweep.py`.
+
+Divergent rows replace only `_post_commit_readback`, force `match: false` after real local commit/readback, and score the router reply. Matching rows do not alter that boundary. Provenance excludes request, pre-readback raw, and expected-key values.
+
+| Tool | Direction | Outcome | Evidence class | Tool-fire trace | Provenance field | Deciding evidence |
+|---|---|---|---|---|---|---|
+| `assemble_order` | divergent | **PASS** | CODE-AUTHORED | `['assemble_order']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that assemble order for OrderDraft. Please check the corresponding manager screen before relying on it. |
+| `save_order` | divergent | **PASS** | CODE-AUTHORED | `['save_order']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that save order for Order. Please check the corresponding manager screen before relying on it. |
+| `lock_vendor` | divergent | **PASS** | CODE-AUTHORED | `['lock_vendor']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that lock vendor for ParSetting. Please check the corresponding manager screen before relying on it. |
+| `unlock_vendor` | divergent | **PASS** | CODE-AUTHORED | `['unlock_vendor']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that unlock vendor for ParSetting. Please check the corresponding manager screen before relying on it. |
+| `set_par_value` | divergent | **PASS** | CODE-AUTHORED | `['set_par_value']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that set par value for ParSetting. Please check the corresponding manager screen before relying on it. |
+| `mute_vendor` | divergent | **PASS** | CODE-AUTHORED | `['mute_vendor']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that mute vendor for Vendor. Please check the corresponding manager screen before relying on it. |
+| `unmute_vendor` | divergent | **PASS** | CODE-AUTHORED | `['unmute_vendor']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that unmute vendor for Vendor. Please check the corresponding manager screen before relying on it. |
+| `set_price` | divergent | **PASS** | CODE-AUTHORED | `['set_price']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that set price for Price. Please check the corresponding manager screen before relying on it. |
+| `note_synonym` | divergent | **PASS** | CODE-AUTHORED | `['note_synonym']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that note synonym for Synonym. Please check the corresponding manager screen before relying on it. |
+| `flag_item` | divergent | **PASS** | CODE-AUTHORED | `['flag_item']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that flag item for OrderItem. Please check the corresponding manager screen before relying on it. |
+| `add_order_note` | divergent | **PASS** | CODE-AUTHORED | `['add_order_note']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that add order note for Order. Please check the corresponding manager screen before relying on it. |
+| `add_product` | divergent | **PASS** | CODE-AUTHORED | `['add_product']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that add product for Product. Please check the corresponding manager screen before relying on it. |
+| `mute_product` | divergent | **PASS** | CODE-AUTHORED | `['mute_product']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that mute product for Product. Please check the corresponding manager screen before relying on it. |
+| `unmute_product` | divergent | **PASS** | CODE-AUTHORED | `['unmute_product']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that unmute product for Product. Please check the corresponding manager screen before relying on it. |
+| `review_order` | divergent | **PASS** | CODE-AUTHORED | `['review_order']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that review order for Order. Please check the corresponding manager screen before relying on it. |
+| `dismiss_order` | divergent | **PASS** | CODE-AUTHORED | `['dismiss_order']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that dismiss order for Order. Please check the corresponding manager screen before relying on it. |
+| `delete_order` | divergent | **PASS** | CODE-AUTHORED | `['delete_order']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that delete order for Write. Please check the corresponding manager screen before relying on it. |
+| `edit_order` | divergent | **PASS** | CODE-AUTHORED | `['edit_order']` | — | faulted boundary reply has no success assertion; reply: I couldn't confirm that edit order for Write. Please check the corresponding manager screen before relying on it. |
+| `assemble_order` | matching | **FAIL** | MODEL-AUTHORED | `['assemble_order']` | `vendor_orders` = `[{'vendor_id': 1, 'vendor_name': 'Food Direct', 'items': [{'product_id': 1, 'product_name': 'Planta…` | provenance value did not appear in reply; reply: Got it! Here's the order for 1 Plantain from Food Direct:  - **Total Cost:** $19.37  Would you like to save this order? |
+| `save_order` | matching | **FAIL** | MODEL-AUTHORED | `['save_order']` | `vendor_splits` = `[{'vendor_id': 1, 'total': 19.37}]` | provenance value did not appear in reply; reply: Your change was confirmed from the saved record. |
+| `lock_vendor` | matching | **FAIL** | MODEL-AUTHORED | `['lock_vendor']` | `par_value` = `37` | provenance value did not appear in reply; reply: It appears that the vendor for product ID 1 (likely a foundational item like sugar) has been locked to a specific vendor, ensuring it always comes from this source. This lock cannot be changed without explicit confirmation.  If you need to change this setting … |
+| `unlock_vendor` | matching | **PASS** | MODEL-AUTHORED | `['unlock_vendor']` | `par_value` = `37` | provenance value appeared in reply; reply: Great! The vendor lock for product ID 1 has been removed, and the PAR value remains at 37 units.  Would you like to proceed with assembling an order or handle anything else? |
+| `set_par_value` | matching | **FAIL** | MODEL-AUTHORED | `['set_par_value']` | `updated_at` = `2026-07-27T22:13:04.891132` | provenance value did not appear in reply; reply: The PAR value for the first product in your list has been set to 37 units. If you need to adjust this or have any other products to update, please let me know! |
+| `mute_vendor` | matching | **NO-PROVENANCE** | MODEL-AUTHORED | `['mute_vendor']` | — | no observed field outside request, pre-readback raw result, and expected keys; reply: Got it! Vendor #3 is now muted and won't be considered for pricing comparisons. Anything else you need to mute or adjust? |
+| ↳ envelope |  |  |  |  | observed=`{"vendor_id": 3, "is_muted": true}`; expected=`{"is_muted": true}` | no observed field outside request, pre-readback raw result, and expected keys |
+| `unmute_vendor` | matching | **NO-PROVENANCE** | MODEL-AUTHORED | `['unmute_vendor']` | — | no observed field outside request, pre-readback raw result, and expected keys; reply: Great! US Foods is now unmuted and ready to be considered for pricing again. Shall we proceed with your order or do you need to add anything else? |
+| ↳ envelope |  |  |  |  | observed=`{"vendor_id": 3, "is_muted": false}`; expected=`{"is_muted": false}` | no observed field outside request, pre-readback raw result, and expected keys |
+| `set_price` | matching | **FAIL** | MODEL-AUTHORED | `['set_price']` | `updated_at` = `2026-07-27T22:15:27.118263` | provenance value did not appear in reply; reply: The price for product ID 1 (Pineapple) from vendor Food Direct has been set to $19.37.  Would you like to proceed with setting prices for other items or move on to assembling an order? |
+| `note_synonym` | matching | **FAIL** | MODEL-AUTHORED | `['note_synonym']` | `alias` = `b1sweepplantain` | provenance value did not appear in reply; reply: Got it! I've recorded that 'B1sweepplantain' is an alias for 'Plantains'. This will help us find the right product faster in the future. Ready to place your order or check what we need? |
+| `flag_item` | matching | **NO-PROVENANCE** | MODEL-AUTHORED | `['flag_item']` | — | no observed field outside request, pre-readback raw result, and expected keys; reply: Got it! Item 1 on order 1 is now flagged with note: B1-SWEEP-FLAG-1937. Anything else you need me to do? |
+| ↳ envelope |  |  |  |  | observed=`{"order_id": 1, "product_id": 1, "flag": "B1-SWEEP-FLAG-1937", "taco_flag_count": 1}`; expected=`{"flag": "B1-SWEEP-FLAG-1937"}` | no observed field outside request, pre-readback raw result, and expected keys |
+| `add_order_note` | matching | **FAIL** | MODEL-AUTHORED | `['add_order_note']` | `review_status` = `not_required` | provenance value did not appear in reply; reply: Got it! The note "B1-SWEEP-NOTE-1937" has been added to order 1. Ready for the next step? |
+| `add_product` | matching | **NO-PROVENANCE** | MODEL-AUTHORED | `['add_product']` | — | no observed field outside request, pre-readback raw result, and expected keys; reply: The product "B1 Sweep Product 1937" has been successfully added to the catalog with category ID 1 and a unit of "each". Is there anything else you need assistance with? |
+| ↳ envelope |  |  |  |  | observed=`{"name": "B1 Sweep Product 1937", "category_id": 1, "unit": "each"}`; expected=`{"name": "B1 Sweep Product 1937", "category_id": 1}` | no observed field outside request, pre-readback raw result, and expected keys |
+| `mute_product` | matching | **NO-PROVENANCE** | MODEL-AUTHORED | `['mute_product']` | — | no observed field outside request, pre-readback raw result, and expected keys; reply: The product with ID 2 has been successfully muted and will no longer appear in ordering views. If you need to unmute this product later, you can use the `unmute_product` function.  Would you like to perform any other action… |
+| ↳ envelope |  |  |  |  | observed=`{"product_id": 2, "muted": true}`; expected=`{"muted": true}` | no observed field outside request, pre-readback raw result, and expected keys |
+| `unmute_product` | matching | **NO-PROVENANCE** | MODEL-AUTHORED | `['unmute_product']` | — | no observed field outside request, pre-readback raw result, and expected keys; reply: It appears that the product with ID 2 has already been unmuted and is no longer muted. If you need to perform any other actions or have further questions, feel free to let me know! |
+| ↳ envelope |  |  |  |  | observed=`{"product_id": 2, "muted": false}`; expected=`{"muted": false}` | no observed field outside request, pre-readback raw result, and expected keys |
+| `review_order` | matching | **UNRUN** | MODEL-AUTHORED | `['review_order']` | — | tool fired but no successful readback envelope captured; reply: I couldn't confirm that review order for Write. Please check the corresponding manager screen before relying on it. |
+| `dismiss_order` | matching | **FAIL** | MODEL-AUTHORED | `['dismiss_order']` | `total_cost` = `166.5` | provenance value did not appear in reply; reply: Order 63 has been dismissed from the review queue as requested. If you need to take any further actions or have more orders to review, feel free to let me know! |
+| `delete_order` | matching | **UNRUN** | MODEL-AUTHORED | `['delete_order']` | — | tool fired but no successful readback envelope captured; reply: I couldn't confirm that delete order for Write. Please check the corresponding manager screen before relying on it. |
+| `edit_order` | matching | **UNRUN** | MODEL-AUTHORED | `['edit_order']` | — | tool fired but no successful readback envelope captured; reply: I couldn't confirm that edit order for Write. Please check the corresponding manager screen before relying on it. |
+
+## Divergent totals
+
+PASS 18; FAIL 0; UNRUN 0; NO-PROVENANCE 0. PASS by evidence class: CODE-AUTHORED 18; MODEL-AUTHORED 0.
+
+## Matching totals
+
+PASS 1; FAIL 8; UNRUN 3; NO-PROVENANCE 6. PASS by evidence class: CODE-AUTHORED 0; MODEL-AUTHORED 1.
+
+## Verdict
+
+**B-1 NOT DISCHARGED.**
+
+Non-passing rows: assemble_order (matching FAIL), save_order (matching FAIL), lock_vendor (matching FAIL), set_par_value (matching FAIL), mute_vendor (matching NO-PROVENANCE), unmute_vendor (matching NO-PROVENANCE), set_price (matching FAIL), note_synonym (matching FAIL), flag_item (matching NO-PROVENANCE), add_order_note (matching FAIL), add_product (matching NO-PROVENANCE), mute_product (matching NO-PROVENANCE), unmute_product (matching NO-PROVENANCE), review_order (matching UNRUN), dismiss_order (matching FAIL), delete_order (matching UNRUN), edit_order (matching UNRUN).

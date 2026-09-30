@@ -1,0 +1,51 @@
+{
+  "base_url": "http://127.0.0.1:8002",
+  "attempts": 2,
+  "iterations": [
+    {
+      "i": 1,
+      "assemble_status": 200,
+      "assemble_seconds": 31.13,
+      "draft_id": null,
+      "assemble_has_order_data": false,
+      "assemble_reply_excerpt": "Sure thing! I see we have Fresh Lime Juice in the catalog. Do you mean that, or were you thinking of individual limes?\n\nIf it's individual limes, could you confirm? They're listed ",
+      "save_status": 200,
+      "save_seconds": 16.7,
+      "has_confirmation_receipt": false,
+      "save_reply_excerpt": "Got it! Here are the details for your order:\n\n- **Limes**: 2 cases at $28.80 each, totaling $57.60.\n\nThe total cost is $57.60. This order is split with Food Direct as the vendor.\n\nWould you like to save this order?"
+    },
+    {
+      "i": 2,
+      "assemble_status": 200,
+      "assemble_seconds": 9.4,
+      "draft_id": null,
+      "assemble_has_order_data": false,
+      "assemble_reply_excerpt": "Sure thing! I see that in the fridge. Let's add that to your order.\n\nDo you need anything else? If not, we can proceed with assembling the order now.",
+      "save_status": 200,
+      "save_seconds": 15.35,
+      "has_confirmation_receipt": false,
+      "save_reply_excerpt": "It looks like we only needed limes and Fresh Lime Juice wasn't available. I've added the 2 limes to your order.\n\nHere's the breakdown:\n- **Total Cost:** $0.00\n\nSince Fresh Lime Juice is not available, it won't be included in this order.\n\nWo"
+    }
+  ],
+  "started_at": "2026-06-23T01:30:58Z",
+  "login_status": 200,
+  "before": {
+    "count": 62,
+    "max_id": 64
+  },
+  "after": {
+    "count": 62,
+    "max_id": 64,
+    "new_ids_after_cleanup": []
+  },
+  "summary": {
+    "attempts": 2,
+    "confirmations": 0,
+    "readbacks_200": 0,
+    "cleanups_200": 0,
+    "distinct_receipt_ids": 0,
+    "doubles": 0,
+    "persisted_after_cleanup": 0
+  },
+  "finished_at": "2026-06-23T01:32:11Z"
+}
